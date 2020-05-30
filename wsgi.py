@@ -14,7 +14,7 @@ api = Api(app, prefix='/api/v1')
 jwt = JWTManager(app)
 bcrypt = Bcrypt(app)
 mongo = PyMongo(app)
-
+wpapi = 'https://zackig.sbicego.ch/wp-json/wp/v2/'
 
 class UserSignup(Resource):
     def __init__(self):
