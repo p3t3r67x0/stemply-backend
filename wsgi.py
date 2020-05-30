@@ -27,10 +27,10 @@ class UserSignup(Resource):
     def __init__(self):
         self.reqparse = reqparse.RequestParser(bundle_errors=True)
 
-        self.reqparse.add_argument('username',
+        self.reqparse.add_argument('email',
                                    type=str,
                                    required=True,
-                                   help='No valid username provided',
+                                   help='No valid email provided',
                                    location='json',
                                    nullable=False)
 
@@ -46,17 +46,17 @@ class UserSignup(Resource):
     def post(self):
         args = self.reqparse.parse_args()
 
-        username = args.username
+        email = args.email
         password = bcrypt.generate_password_hash(args.password)
 
         try:
             mongo.db.users.insert_one(
-                {'username': username, 'password': password})
-            refresh_token = create_refresh_token(identity=username)
-            access_token = create_access_token(identity=username)
+                {'email': email, 'password': password})
+            refresh_token = create_refresh_token(identity=email)
+            access_token = create_access_token(identity=email)
 
             return {
-                'message': 'User {} was created'.format(username),
+                'message': 'User {} was created'.format(email),
                 'refresh_token': refresh_token,
                 'access_token': access_token
             }
@@ -68,10 +68,10 @@ class UserSignin(Resource):
     def __init__(self):
         self.reqparse = reqparse.RequestParser(bundle_errors=True)
 
-        self.reqparse.add_argument('username',
+        self.reqparse.add_argument('email',
                                    type=str,
                                    required=True,
-                                   help='No valid username provided',
+                                   help='No valid email provided',
                                    location='json',
                                    nullable=False)
 
@@ -87,17 +87,17 @@ class UserSignin(Resource):
     def post(self):
         args = self.reqparse.parse_args()
 
-        username = args.username
+        email = args.email
         password = args.password
 
-        user = mongo.db.users.find_one({'username': username})
+        user = mongo.db.users.find_one({'email': email})
 
         if user and bcrypt.check_password_hash(user['password'], password):
-            refresh_token = create_refresh_token(identity=username)
-            access_token = create_access_token(identity=username)
+            refresh_token = create_refresh_token(identity=email)
+            access_token = create_access_token(identity=email)
 
             return {
-                'message': 'Logged in as {}'.format(username),
+                'message': 'Logged in as {}'.format(email),
                 'refresh_token': refresh_token,
                 'access_token': access_token
             }
