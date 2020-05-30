@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from flask import Flask, jsonify
+from flask import Flask
 from flask_restful import Api, Resource, reqparse
 from flask_jwt_extended import (JWTManager, create_access_token,
                                 create_refresh_token, jwt_required,
@@ -8,6 +8,9 @@ from flask_jwt_extended import (JWTManager, create_access_token,
 from flask_pymongo import PyMongo
 from flask_bcrypt import Bcrypt
 import requests as r
+
+from bson.objectid import ObjectId
+
 
 app = Flask(__name__)
 app.config.from_json('config.json')
@@ -108,14 +111,92 @@ class TokenRefresh(Resource):
         return {'access_token': access_token}
 
 
-class ChallangesEndpoint(Resource):
+class Challange(Resource):
+    def __init__(self):
+        self.reqparse = reqparse.RequestParser(bundle_errors=True)
+
+        self.reqparse.add_argument('id',
+                                   type=str,
+                                   required=False,
+                                   help='No valid id provided',
+                                   location='json',
+                                   nullable=False)
+
+        self.reqparse.add_argument('title',
+                                   type=str,
+                                   required=False,
+                                   help='No valid title provided',
+                                   location='json',
+                                   nullable=False)
+
+        self.reqparse.add_argument('content',
+                                   type=str,
+                                   required=False,
+                                   help='No valid content provided',
+                                   location='json',
+                                   nullable=False)
+
+        self.reqparse.add_argument('duration',
+                                   type=str,
+                                   required=False,
+                                   help='No valid duration provided',
+                                   location='json',
+                                   nullable=False)
+
+        super(Challange, self).__init__()
+
     @jwt_required
     def get(self):
-        return {'message': 'here will be the api endpoint'}
+        response = []
+
+        for data in mongo.db.challenge.find():
+            d = {}
+
+            for k, v in data.items():
+                if isinstance(v, ObjectId):
+                    d[k] = str(v)
+                else:
+                    d[k] = v
+
+            response.append(d)
+
+        print(response)
+        return {'message': response}
 
     @jwt_required
     def post(self):
-        return {'message': 'here will be the api endpoint'}
+        args = self.reqparse.parse_args()
+
+        title = args.title
+        content = args.content
+        duration = args.duration
+
+        try:
+            mongo.db.challenge.insert_one(
+                {'title': title, 'content': content, 'duration': duration})
+
+            return {'message': 'Challenge was successfully added'}
+        except Exception:
+            return {'message': 'Something went wrong'}, 500
+
+    @jwt_required
+    def put(self):
+        args = self.reqparse.parse_args()
+
+        title = args.title
+        content = args.content
+        duration = args.duration
+
+        try:
+            condition = {'_id': id}
+            statement = {'title': title,
+                         'content': content, 'duration': duration}
+
+            data = mongo.db.challenge.update_one(condition, statement)
+
+            return {'message': 'Challenge {} was added'.format(data.id)}
+        except Exception:
+            return {'message': 'Something went wrong'}, 500
 
 
 class Fetch(Resource):
@@ -126,10 +207,11 @@ class Fetch(Resource):
             'data': posts
         }
 
+
 api.add_resource(UserSignin, '/signin')
 api.add_resource(UserSignup, '/signup')
 api.add_resource(TokenRefresh, '/token/refresh')
-api.add_resource(ChallangesEndpoint, '/challenges')
+api.add_resource(Challange, '/challenge', endpoint='create')
 api.add_resource(Fetch, '/fetch')
 
 
