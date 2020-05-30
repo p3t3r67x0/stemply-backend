@@ -1,5 +1,26 @@
 # stemply-backend
 
+## Usage
+
+```bash
+curl http://127.0.0.1:5000/api/v1/
+```
+
+A possible response could look like this
+
+```json
+{
+  "message": {
+    "username": "No valid username provided",
+    "password": "No valid password provided"
+  }
+}
+```
+
+```bash
+curl -X POST http://127.0.0.1:5000/api/v1/ -d '{"username":"janedoe", "password":"secret1"}' -H "Content-Type: application/json"
+```
+
 
 ## Prerequisites
 
@@ -7,7 +28,8 @@ Create a `config.json` file in the `/` folder
 
 ```json
 {
-  "SECRET_KEY": "YOUR_SECRET_KEY_HERE"
+  "SECRET_KEY": "YOUR_SECRET_KEY_HERE",
+  "MONGO_URI": "mongodb://127.0.0.1:27017/stemply"
 }
 ```
 
