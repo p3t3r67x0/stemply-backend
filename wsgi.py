@@ -1,9 +1,6 @@
 #!/usr/bin/env python3
 
-import ast
-import json
-
-from flask import Flask, jsonify, request
+from flask import Flask
 from flask_restful import Api, Resource, reqparse
 from flask_pymongo import PyMongo
 from flask_bcrypt import Bcrypt
