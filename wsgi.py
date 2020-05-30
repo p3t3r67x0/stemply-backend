@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+import requests as r
+
 from flask import Flask
 from flask_restful import Api, Resource, reqparse
 from flask_jwt_extended import (JWTManager, create_access_token,
@@ -7,7 +9,6 @@ from flask_jwt_extended import (JWTManager, create_access_token,
                                 jwt_refresh_token_required, get_jwt_identity)
 from flask_pymongo import PyMongo
 from flask_bcrypt import Bcrypt
-import requests as r
 
 from bson.objectid import ObjectId
 
@@ -18,7 +19,9 @@ api = Api(app, prefix='/api/v1')
 jwt = JWTManager(app)
 bcrypt = Bcrypt(app)
 mongo = PyMongo(app)
+
 wpapi = 'https://zackig.sbicego.ch/wp-json/wp/v2/'
+
 
 class UserSignup(Resource):
     def __init__(self):
