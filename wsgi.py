@@ -181,6 +181,66 @@ class Challange(Resource):
         except Exception:
             return {'message': 'Something went wrong'}, 500
 
+
+class ChallangeDetail(Resource):
+    def __init__(self):
+        self.reqparse = reqparse.RequestParser(bundle_errors=True)
+
+        self.reqparse.add_argument('id',
+                                   type=str,
+                                   required=False,
+                                   help='No valid id provided',
+                                   location='json',
+                                   nullable=False)
+
+        self.reqparse.add_argument('title',
+                                   type=str,
+                                   required=False,
+                                   help='No valid title provided',
+                                   location='json',
+                                   nullable=False)
+
+        self.reqparse.add_argument('content',
+                                   type=str,
+                                   required=False,
+                                   help='No valid content provided',
+                                   location='json',
+                                   nullable=False)
+
+        self.reqparse.add_argument('duration',
+                                   type=str,
+                                   required=False,
+                                   help='No valid duration provided',
+                                   location='json',
+                                   nullable=False)
+
+        super(ChallangeDetail, self).__init__()
+
+    @jwt_required
+    def post(self):
+        args = self.reqparse.parse_args()
+
+        if not args.id:
+            return {'message': 'No valid id provided'}, 404
+
+        response = []
+
+        data = mongo.db.challenge.find_one({'_id': ObjectId(args.id)})
+        print(args.id)
+
+        if data:
+            d = {}
+
+            for k, v in data.items():
+                if isinstance(v, ObjectId):
+                    d[k] = str(v)
+                else:
+                    d[k] = v
+
+            response.append(d)
+
+        return {'message': response}
+
     @jwt_required
     def put(self):
         args = self.reqparse.parse_args()
@@ -190,20 +250,25 @@ class Challange(Resource):
         duration = args.duration
 
         try:
-            condition = {'_id': id}
             statement = {'title': title,
-                         'content': content, 'duration': duration}
+                         'content': content,
+                         'duration': duration}
 
-            data = mongo.db.challenge.update_one(condition, statement)
+            data = mongo.db.challenge.update_one(
+                {'_id': ObjectId(args.id)}, {'$set': statement}, upsert=True)
 
-            return {'message': 'Challenge {} was added'.format(data.id)}
-        except Exception:
+            if data.modified_count > 0:
+                return {'message': 'Challenge was successfully updated'}
+            else:
+                return {'message': 'Nothing to update already uptodate'}
+        except Exception as e:
+            print(e)
             return {'message': 'Something went wrong'}, 500
 
 
 class Fetch(Resource):
     def get(self):
-        posts = r.get(wpapi+'posts').json()
+        posts = r.get(wpapi + 'posts').json()
         return {
             'length': len(posts),
             'data': posts
@@ -213,7 +278,8 @@ class Fetch(Resource):
 api.add_resource(UserSignin, '/signin')
 api.add_resource(UserSignup, '/signup')
 api.add_resource(TokenRefresh, '/token/refresh')
-api.add_resource(Challange, '/challenge', endpoint='create')
+api.add_resource(Challange, '/challenge')
+api.add_resource(ChallangeDetail, '/challenge/detail')
 api.add_resource(Fetch, '/fetch')
 
 
