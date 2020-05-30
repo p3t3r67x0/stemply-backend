@@ -34,8 +34,12 @@ class Endpoint(Resource):
         args = self.reqparse.parse_args()
 
         if args.password:
-            users = mongo.db.users.find({'online': True})
+            users = list(mongo.db.users.find({'online': True}))
+            print(users)
             # user = mongo.db.users.find({'_id': username})
+
+            if not users:
+                users = []
 
             return jsonify({'users': users})
 
