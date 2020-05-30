@@ -3,7 +3,7 @@
 ## Usage
 
 ```bash
-curl http://127.0.0.1:5000/api/v1/
+curl http://127.0.0.1:5000/api/v1/signin
 ```
 
 A possible response could look like this
@@ -17,8 +17,25 @@ A possible response could look like this
 }
 ```
 
+Signin or signup by default routes `\signin` or `\signup`
+
 ```bash
-curl -X POST http://127.0.0.1:5000/api/v1/ -d '{"username":"janedoe", "password":"secret1"}' -H "Content-Type: application/json"
+curl -X POST http://127.0.0.1:5000/api/v1/signin \
+-d '{"username":"YOUR_USERNAME_HERE", "password":"YOUR_PASSWORD_HERE"}' \
+-H "Content-Type: application/json"
+```
+
+```bash
+curl -X POST http://127.0.0.1:5000/api/v1/signup \
+-d '{"username":"YOUR_USERNAME_HERE", "password":"YOUR_PASSWORD_HERE"}' \
+-H "Content-Type: application/json"
+```
+
+Call a protected resource for example the route `\challenges`
+
+```bash
+curl -X GET http://127.0.0.1:5000/api/v1/challenges \
+-H "Authorization: Bearer YOUR_ACCESS_TOKEN_HERE"
 ```
 
 
@@ -29,7 +46,8 @@ Create a `config.json` file in the `/` folder
 ```json
 {
   "SECRET_KEY": "YOUR_SECRET_KEY_HERE",
-  "MONGO_URI": "mongodb://127.0.0.1:27017/stemply"
+  "MONGO_URI": "mongodb://127.0.0.1:27017/zackig",
+  "JWT_SECRET_KEY": "YOUR_JWT_SECRET_KEY_HERE"
 }
 ```
 
