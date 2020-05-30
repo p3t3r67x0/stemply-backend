@@ -160,7 +160,6 @@ class Challange(Resource):
 
             response.append(d)
 
-        print(response)
         return {'message': response}
 
     @jwt_required
