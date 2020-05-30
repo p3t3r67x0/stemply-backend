@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 
-from flask import Flask
+from flask import Flask, jsonify
 from flask_restful import Api, Resource, reqparse
 from flask_jwt_extended import (JWTManager, create_access_token,
                                 create_refresh_token, jwt_required,
                                 jwt_refresh_token_required, get_jwt_identity)
 from flask_pymongo import PyMongo
 from flask_bcrypt import Bcrypt
+import requests as r
 
 app = Flask(__name__)
 app.config.from_json('config.json')
@@ -117,10 +118,19 @@ class ChallangesEndpoint(Resource):
         return {'message': 'here will be the api endpoint'}
 
 
+class Fetch(Resource):
+    def get(self):
+        posts = r.get(wpapi+'posts').json()
+        return {
+            'length': len(posts),
+            'data': posts
+        }
+
 api.add_resource(UserSignin, '/signin')
 api.add_resource(UserSignup, '/signup')
 api.add_resource(TokenRefresh, '/token/refresh')
 api.add_resource(ChallangesEndpoint, '/challenges')
+api.add_resource(Fetch, '/fetch')
 
 
 if __name__ == '__main__':
