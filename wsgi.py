@@ -1,12 +1,17 @@
 #!/usr/bin/env python3
 
-from flask import Flask, jsonify
+import ast
+import json
+
+from flask import Flask, jsonify, request
 from flask_restful import Api, Resource, reqparse
 from flask_pymongo import PyMongo
+from flask_bcrypt import Bcrypt
 
 app = Flask(__name__)
 app.config.from_json('config.json')
 api = Api(app, prefix='/api/v1')
+bcrypt = Bcrypt(app)
 mongo = PyMongo(app)
 
 
@@ -33,15 +38,10 @@ class Endpoint(Resource):
     def post(self):
         args = self.reqparse.parse_args()
 
-        if args.password:
-            users = list(mongo.db.users.find({'online': True}))
-            print(users)
-            # user = mongo.db.users.find({'_id': username})
+        username = args.username
+        password = bcrypt.generate_password_hash(args.password)
 
-            if not users:
-                users = []
-
-            return jsonify({'users': users})
+        mongo.db.users.insert_one({'username': username, 'password': password})
 
 
 api.add_resource(Endpoint, '/')
