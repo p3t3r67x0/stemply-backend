@@ -11,7 +11,7 @@ from flask_pymongo import PyMongo
 from flask_bcrypt import Bcrypt
 
 from bson.objectid import ObjectId
-
+from flask_cors import CORS
 
 app = Flask(__name__)
 app.config.from_json('config.json')
@@ -19,6 +19,7 @@ api = Api(app, prefix='/api/v1')
 jwt = JWTManager(app)
 bcrypt = Bcrypt(app)
 mongo = PyMongo(app)
+cors = CORS(app)
 
 wpapi = 'https://zackig.sbicego.ch/wp-json/wp/v2/'
 
@@ -274,7 +275,7 @@ class Fetch(Resource):
             challenge = mongo.db.challenge.find_one({'id': post['id']})
             if challenge == None:
                 try:
-                    mongo.db.challenge.insert_one({'id': post['id'], 'date': post['date'], 'modified': post['modified'], 'title': post['title']['rendered'], 'content': post['content']['rendered']})
+                    mongo.db.challenge.insert_one({'id': post['id'], 'date': post['date'], 'modified': post['modified'], 'title': post['title']['rendered'], 'content': post['content']['rendered'], 'duration': 0})
                     i+=1
                 except:
                     pass
