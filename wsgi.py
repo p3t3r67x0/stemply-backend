@@ -161,7 +161,7 @@ class Challenge(Resource):
 
     @jwt_required
     def get(self):
-        response = []
+        array = []
 
         for data in mongo.db.challenge.find():
             d = {}
@@ -174,9 +174,9 @@ class Challenge(Resource):
                 else:
                     d[k] = v
 
-            response.append(d)
+            array.append(d)
 
-        return {'message': response}
+        return {'message': array}
 
     @jwt_required
     def post(self):
@@ -238,7 +238,7 @@ class ChallengeDetail(Resource):
         if not args.id:
             return {'message': 'No valid id provided'}, 404
 
-        response = []
+        array = []
 
         data = mongo.db.challenge.find_one({'_id': ObjectId(args.id)})
         print(args.id)
@@ -254,9 +254,9 @@ class ChallengeDetail(Resource):
                 else:
                     d[k] = v
 
-            response.append(d)
+            array.append(d)
 
-        return {'message': response}
+        return {'message': array}
 
     @jwt_required
     def put(self):
@@ -299,7 +299,7 @@ class ChallengeUser(Resource):
         super(ChallengeUser, self).__init__()
 
     @jwt_required
-    def post(self):
+    def get(self):
         email = get_jwt_identity()
 
         user = mongo.db.users.find_one({'email': email})
@@ -307,12 +307,25 @@ class ChallengeUser(Resource):
         if not user:
             return {'message': 'User data was not found'}
 
-        data = mongo.db.challenge.find({'_id': {'$in': user.challenges}})
+        results = mongo.db.challenge.find(
+            {'_id': {'$in': [ObjectId(id) for id in user['challenges']]}})
 
-        if not data:
-            return {'message': 'User has no challenges'}
+        array = []
 
-        return {'message': data}
+        for data in results:
+            d = {}
+
+            for k, v in data.items():
+                if isinstance(v, ObjectId):
+                    d[k] = str(v)
+                elif isinstance(v, datetime):
+                    d[k] = str(v)
+                else:
+                    d[k] = v
+
+            array.append(d)
+
+        return {'message': array}
 
     @jwt_required
     def put(self):
