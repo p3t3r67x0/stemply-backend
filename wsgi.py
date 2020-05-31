@@ -299,6 +299,22 @@ class ChallengeUser(Resource):
         super(ChallengeUser, self).__init__()
 
     @jwt_required
+    def post(self):
+        email = get_jwt_identity()
+
+        user = mongo.db.users.find_one({'email': email})
+
+        if not user:
+            return {'message': 'User data was not found'}
+
+        data = mongo.db.challenge.find({'_id': {'$in': user.challenges}})
+
+        if not data:
+            return {'message': 'User has no challenges'}
+
+        return {'message': data}
+
+    @jwt_required
     def put(self):
         email = get_jwt_identity()
         args = self.reqparse.parse_args()
