@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import re
 import requests as r
 
 from flask import Flask
@@ -12,7 +13,6 @@ from flask_bcrypt import Bcrypt
 from durations import Duration
 from bson.objectid import ObjectId
 from flask_cors import CORS
-import re
 
 app = Flask(__name__)
 app.config.from_json('config.json')
@@ -24,8 +24,10 @@ cors = CORS(app)
 
 wpapi = 'https://zackig.sbicego.ch/wp-json/wp/v2/'
 
+
 def cleantext(text):
     return re.sub(re.compile('<.*?>'), '', text.replace('\n', '').replace('\r', ''))
+
 
 class UserSignup(Resource):
     def __init__(self):
