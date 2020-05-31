@@ -184,7 +184,7 @@ class Challenge(Resource):
         super(Challenge, self).__init__()
 
     @jwt_required
-    @user_is('admin')
+    @user_is('user')
     def get(self):
         array = []
 
@@ -359,7 +359,7 @@ class ChallengeUser(Resource):
         return {'message': array}
 
     @jwt_required
-    @user_is('user')
+    @user_is('admin')
     def put(self):
         email = get_jwt_identity()
         args = self.reqparse.parse_args()
