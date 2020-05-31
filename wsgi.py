@@ -56,7 +56,7 @@ class UserSignup(Resource):
         password = bcrypt.generate_password_hash(args.password)
 
         try:
-            mongo.db.users.insert_one(
+            data = mongo.db.users.insert_one(
                 {'email': email, 'password': password})
             refresh_token = create_refresh_token(identity=email)
             access_token = create_access_token(identity=email)
@@ -64,7 +64,8 @@ class UserSignup(Resource):
             return {
                 'message': 'User {} was created'.format(email),
                 'refresh_token': refresh_token,
-                'access_token': access_token
+                'access_token': access_token,
+                'user_id': str(data.inserted_id)
             }
         except Exception:
             return {'message': 'Something went wrong'}, 500
@@ -105,7 +106,8 @@ class UserSignin(Resource):
             return {
                 'message': 'Logged in as {}'.format(email),
                 'refresh_token': refresh_token,
-                'access_token': access_token
+                'access_token': access_token,
+                'user_id': str(user['_id'])
             }
         else:
             return {'message': 'Wrong credentials'}
@@ -302,7 +304,6 @@ class ChallengeUser(Resource):
             else:
                 d[k] = v
 
-        print(d['_id'])
         return {'message': 'User was found', '_id': d['_id']}
 
 
