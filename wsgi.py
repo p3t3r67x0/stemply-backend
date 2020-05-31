@@ -114,7 +114,7 @@ class TokenRefresh(Resource):
         return {'access_token': access_token}
 
 
-class Challange(Resource):
+class Challenge(Resource):
     def __init__(self):
         self.reqparse = reqparse.RequestParser(bundle_errors=True)
 
@@ -146,7 +146,7 @@ class Challange(Resource):
                                    location='json',
                                    nullable=False)
 
-        super(Challange, self).__init__()
+        super(Challenge, self).__init__()
 
     @jwt_required
     def get(self):
@@ -182,7 +182,7 @@ class Challange(Resource):
             return {'message': 'Something went wrong'}, 500
 
 
-class ChallangeDetail(Resource):
+class ChallengeDetail(Resource):
     def __init__(self):
         self.reqparse = reqparse.RequestParser(bundle_errors=True)
 
@@ -214,7 +214,7 @@ class ChallangeDetail(Resource):
                                    location='json',
                                    nullable=False)
 
-        super(ChallangeDetail, self).__init__()
+        super(ChallengeDetail, self).__init__()
 
     @jwt_required
     def post(self):
@@ -268,18 +268,35 @@ class ChallangeDetail(Resource):
 
 class Fetch(Resource):
     def get(self):
+        i = 0
         posts = r.get(wpapi + 'posts').json()
-        return {
-            'length': len(posts),
-            'data': posts
-        }
+        for post in posts:
+            challenge = mongo.db.challenge.find_one({'id': post['id']})
+            if challenge == None:
+                try:
+                    mongo.db.challenge.insert_one({'id': post['id'], 'date': post['date'], 'modified': post['modified'], 'title': post['title']['rendered'], 'content': post['content']['rendered']})
+                    i+=1
+                except:
+                    pass
+
+        response = []
+        for data in mongo.db.challenge.find():
+            d = {}
+            for k, v in data.items():
+                if isinstance(v, ObjectId):
+                    d[k] = str(v)
+                else:
+                    d[k] = v
+            response.append(d)
+
+        return {'message': response,'added':i}
 
 
 api.add_resource(UserSignin, '/signin')
 api.add_resource(UserSignup, '/signup')
 api.add_resource(TokenRefresh, '/token/refresh')
-api.add_resource(Challange, '/challenge')
-api.add_resource(ChallangeDetail, '/challenge/detail')
+api.add_resource(Challenge, '/challenge')
+api.add_resource(ChallengeDetail, '/challenge/detail')
 api.add_resource(Fetch, '/fetch')
 
 
