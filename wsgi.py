@@ -317,13 +317,23 @@ class Fetch(Resource):
         for post in posts:
             challenge = mongo.db.challenge.find_one({'wpid': post['id']})
             try:
-                duration = int(Duration(r.get(wpapi + 'tags?post=' + str(post['id'])).json()[0]['name']).to_seconds())
+                duration = int(Duration(
+                r.get(wpapi + 'tags?post=' + str(post['id'])).json()[0]['name']
+                ).to_seconds())
             except:
                 duration = 604800 # default duration 1 week
 
             if challenge == None:
                 try:
-                    mongo.db.challenge.insert_one({'wpid': post['id'], 'date': post['date'], 'modified': post['modified'], 'title': post['title']['rendered'], 'content': cleantext(post['content']['rendered']), 'duration': duration, 'editedinwebapp': False})
+                    mongo.db.challenge.insert_one({
+                    'wpid': post['id'],
+                    'date': post['date'],
+                    'modified': post['modified'],
+                    'title': post['title']['rendered'],
+                    'content': cleantext(post['content']['rendered']),
+                    'duration': duration,
+                    'editedinwebapp': False
+                    })
                     i+=1
                 except:
                     pass
@@ -331,23 +341,23 @@ class Fetch(Resource):
             else:
                 try:
                     if challenge['editedinwebapp'] == False:
-                        data = {'wpid': post['id'], 'date': post['date'], 'modified': post['modified'], 'title': post['title']['rendered'], 'content': cleantext(post['content']['rendered']), 'duration': duration}
-                        mongo.db.challenge.update_one({'_id': challenge['_id']}, {"$set": data})
+                        data = {
+                        'wpid': post['id'],
+                        'date': post['date'],
+                        'modified': post['modified'],
+                        'title': post['title']['rendered'],
+                        'content': cleantext(post['content']['rendered']),
+                        'duration': duration
+                        }
+                        mongo.db.challenge.update_one(
+                        {'_id': challenge['_id']},
+                        {"$set": data}
+                        )
                         j+=1
                 except:
                     pass
 
-        response = []
-        for data in mongo.db.challenge.find():
-            d = {}
-            for k, v in data.items():
-                if isinstance(v, ObjectId):
-                    d[k] = str(v)
-                else:
-                    d[k] = v
-            response.append(d)
-
-        return {'message': response,'added':i, 'updated':j}
+        return {'added':i, 'updated':j}
 
 
 api.add_resource(UserSignin, '/signin')
