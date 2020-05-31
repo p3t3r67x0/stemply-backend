@@ -183,7 +183,8 @@ class Challenge(Resource):
 
         try:
             mongo.db.challenge.insert_one(
-                {'title': title, 'content': content, 'duration': duration, 'editedinwebapp': True})
+                {'title': title, 'content': content,
+                 'duration': duration, 'editedinwebapp': True})
 
             return {'message': 'Challenge was successfully added'}
         except Exception:
@@ -318,46 +319,47 @@ class Fetch(Resource):
             challenge = mongo.db.challenge.find_one({'wpid': post['id']})
             try:
                 duration = int(Duration(
-                r.get(wpapi + 'tags?post=' + str(post['id'])).json()[0]['name']
+                    r.get(wpapi + 'tags?post=' +
+                          str(post['id'])).json()[0]['name']
                 ).to_seconds())
-            except:
-                duration = 604800 # default duration 1 week
+            except Exception:
+                duration = 604800  # default duration 1 week
 
-            if challenge == None:
+            if not challenge:
                 try:
                     mongo.db.challenge.insert_one({
-                    'wpid': post['id'],
-                    'date': post['date'],
-                    'modified': post['modified'],
-                    'title': post['title']['rendered'],
-                    'content': cleantext(post['content']['rendered']),
-                    'duration': duration,
-                    'editedinwebapp': False
-                    })
-                    i+=1
-                except:
-                    pass
-
-            else:
-                try:
-                    if challenge['editedinwebapp'] == False:
-                        data = {
                         'wpid': post['id'],
                         'date': post['date'],
                         'modified': post['modified'],
                         'title': post['title']['rendered'],
                         'content': cleantext(post['content']['rendered']),
-                        'duration': duration
-                        }
-                        mongo.db.challenge.update_one(
-                        {'_id': challenge['_id']},
-                        {"$set": data}
-                        )
-                        j+=1
-                except:
+                        'duration': duration,
+                        'editedinwebapp': False
+                    })
+                    i += 1
+                except Exception:
                     pass
 
-        return {'added':i, 'updated':j}
+            else:
+                try:
+                    if not challenge['editedinwebapp']:
+                        data = {
+                            'wpid': post['id'],
+                            'date': post['date'],
+                            'modified': post['modified'],
+                            'title': post['title']['rendered'],
+                            'content': cleantext(post['content']['rendered']),
+                            'duration': duration
+                        }
+                        mongo.db.challenge.update_one(
+                            {'_id': challenge['_id']},
+                            {"$set": data}
+                        )
+                        j += 1
+                except Exception:
+                    pass
+
+        return {'added': i, 'updated': j}
 
 
 api.add_resource(UserSignin, '/signin')
