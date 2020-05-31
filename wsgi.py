@@ -280,33 +280,33 @@ class ChallengeUser(Resource):
     def __init__(self):
         self.reqparse = reqparse.RequestParser(bundle_errors=True)
 
-        self.reqparse.add_argument('id',
+        self.reqparse.add_argument('challenge_id',
                                    type=str,
                                    required=False,
-                                   help='No valid id provided',
+                                   help='No valid challenge id provided',
                                    location='json',
                                    nullable=False)
 
         super(ChallengeUser, self).__init__()
 
     @jwt_required
-    def post(self):
-        current_user = get_jwt_identity()
+    def put(self):
+        email = get_jwt_identity()
+        args = self.reqparse.parse_args()
 
-        data = mongo.db.users.find_one({'email': current_user})
+        challenge_id = args.challenge_id
 
-        if not data:
-            return {'message': 'User was not found'}, 404
+        statement = {'challenge_id': challenge_id}
 
-        d = {}
+        user = mongo.db.challenge.update_one(
+            {'email': email}, {'$addToSet': statement}, upsert=True)
 
-        for k, v in data.items():
-            if isinstance(v, ObjectId):
-                d[k] = str(v)
-            else:
-                d[k] = v
+        print(user.modified_count)
 
-        return {'message': 'User was found', '_id': d['_id']}
+        if user.modified_count > 0:
+            return {'message': 'User subscribed to challenge'}
+        else:
+            return {'message': 'Nothing to update already uptodate'}
 
 
 class Fetch(Resource):
