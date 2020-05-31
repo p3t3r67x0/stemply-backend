@@ -408,10 +408,8 @@ class Fetch(Resource):
                 post['modified'], '%Y-%m-%dT%H:%M:%S'))
 
             try:
-                duration = int(Duration(
-                    r.get(wpapi + 'tags?post=' +
-                          str(post['id'])).json()[0]['name']
-                ).to_seconds())
+                duration = int(Duration(r.get('{}tags?post={}'.format(
+                    wpapi, str(post['id'])).json()[0]['name'])).to_seconds())
             except Exception:
                 duration = 604800  # default duration 1 week
 
