@@ -11,11 +11,13 @@ from flask_jwt_extended import (JWTManager, create_access_token,
                                 jwt_refresh_token_required, get_jwt_identity)
 from flask_pymongo import PyMongo
 from flask_bcrypt import Bcrypt
-from durations import Duration
 from flask_cors import CORS
 
 from bson.objectid import ObjectId
+from durations import Duration
 from datetime import datetime
+from functools import wraps
+
 
 app = Flask(__name__)
 app.config.from_json('config.json')
@@ -30,6 +32,27 @@ wpapi = 'https://zackig.sbicego.ch/wp-json/wp/v2/'
 
 def cleantext(text):
     return re.sub(re.compile('<.*?>'), '', text.replace('\n', '').replace('\r', ''))
+
+
+def user_is(role):
+    def wrapper(func):
+        @wraps(func)
+        def inner(*args, **kwargs):
+            email = get_jwt_identity()
+            user = mongo.db.users.find_one({'email': email})
+
+            if not user:
+                return {'message': 'You are not authenticated'}, 401
+
+            if 'roles' not in user:
+                return {'message': 'You have no roles ask for support'}, 400
+
+            if role in user['roles']:
+                return func(*args, **kwargs)
+
+            return {'message': 'You do not have access'}, 403
+        return inner
+    return wrapper
 
 
 class UserSignup(Resource):
@@ -160,6 +183,7 @@ class Challenge(Resource):
         super(Challenge, self).__init__()
 
     @jwt_required
+    @user_is('admin')
     def get(self):
         array = []
 
@@ -179,6 +203,7 @@ class Challenge(Resource):
         return {'message': array}
 
     @jwt_required
+    @user_is('admin')
     def post(self):
         args = self.reqparse.parse_args()
 
@@ -232,6 +257,7 @@ class ChallengeDetail(Resource):
         super(ChallengeDetail, self).__init__()
 
     @jwt_required
+    @user_is('admin')
     def post(self):
         args = self.reqparse.parse_args()
 
@@ -259,6 +285,7 @@ class ChallengeDetail(Resource):
         return {'message': array}
 
     @jwt_required
+    @user_is('admin')
     def put(self):
         args = self.reqparse.parse_args()
 
@@ -299,6 +326,7 @@ class ChallengeUser(Resource):
         super(ChallengeUser, self).__init__()
 
     @jwt_required
+    @user_is('user')
     def get(self):
         email = get_jwt_identity()
 
@@ -328,6 +356,7 @@ class ChallengeUser(Resource):
         return {'message': array}
 
     @jwt_required
+    @user_is('user')
     def put(self):
         email = get_jwt_identity()
         args = self.reqparse.parse_args()
@@ -361,6 +390,8 @@ class ChallengeUser(Resource):
 
 
 class Fetch(Resource):
+    @jwt_required
+    @user_is('admin')
     def get(self):
         i = 0
         j = 0
