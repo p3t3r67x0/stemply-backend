@@ -134,6 +134,7 @@ class UserSignin(Resource):
                 'message': 'Logged in as {}'.format(email),
                 'refresh_token': refresh_token,
                 'access_token': access_token,
+                'user_roles': user['roles'],
                 'user_id': str(user['_id'])
             }
         else:
@@ -310,18 +311,25 @@ class ChallengeDetail(Resource):
             return {'message': 'Something went wrong'}, 500
 
 
-class ChallengeUser(Resource):
+class ChallengeSubscribtion(Resource):
     def __init__(self):
         self.reqparse = reqparse.RequestParser(bundle_errors=True)
 
-        self.reqparse.add_argument('id',
+        self.reqparse.add_argument('challenge_id',
                                    type=str,
                                    required=False,
                                    help='No valid challenge id provided',
                                    location='json',
                                    nullable=False)
 
-        super(ChallengeUser, self).__init__()
+        self.reqparse.add_argument('user_id',
+                                   type=str,
+                                   required=False,
+                                   help='No valid user id provided',
+                                   location='json',
+                                   nullable=False)
+
+        super(ChallengeSubscribtion, self).__init__()
 
     @jwt_required
     @user_is('user')
@@ -332,7 +340,7 @@ class ChallengeUser(Resource):
         user = mongo.db.users.find_one({'email': email})
 
         if not user:
-            return {'message': 'User data was not found'}
+            return {'message': 'User data was not found'}, 404
 
         if 'challenges' in user:
             results = mongo.db.challenge.find(
@@ -358,22 +366,20 @@ class ChallengeUser(Resource):
     @jwt_required
     @user_is('admin')
     def put(self):
-        email = get_jwt_identity()
         args = self.reqparse.parse_args()
 
-        id = args.id
+        challenge_id = args.challenge_id
+        user_id = args.user_id
 
-        if not id:
-            return {'message': 'Challenge id missing'}
-
-        query = {'email': email, 'challenges': {'$in': [id]}}
+        query = {'_id': ObjectId(user_id), 'challenges': {
+            '$in': [challenge_id]}}
 
         data = mongo.db.users.find_one(query)
-        statement = {'challenges': id}
+        statement = {'challenges': challenge_id}
 
         if data:
             user = mongo.db.users.update_one(
-                {'email': email}, {'$pull': statement}, upsert=True)
+                {'_id': ObjectId(user_id)}, {'$pull': statement}, upsert=True)
 
             if user.modified_count > 0:
                 return {'message': 'User unsubscribed from challenge'}
@@ -381,12 +387,53 @@ class ChallengeUser(Resource):
                 return {'message': 'Nothing to update already uptodate'}
 
         user = mongo.db.users.update_one(
-            {'email': email}, {'$addToSet': statement}, upsert=True)
+            {'_id': ObjectId(user_id)}, {'$addToSet': statement}, upsert=True)
 
         if user.modified_count > 0:
             return {'message': 'User subscribed to challenge'}
         else:
             return {'message': 'Nothing to update already uptodate'}
+
+
+class User(Resource):
+    def __init__(self):
+        self.reqparse = reqparse.RequestParser(bundle_errors=True)
+
+        self.reqparse.add_argument('id',
+                                   type=str,
+                                   required=False,
+                                   help='No valid user id provided',
+                                   location='json',
+                                   nullable=False)
+
+        super(User, self).__init__()
+
+    @jwt_required
+    @user_is('admin')
+    def get(self):
+        users = mongo.db.users.find({}, {'password': 0})
+
+        if not users:
+            return {'message': 'No users were found ask for support'}, 404
+
+        array = []
+
+        for data in users:
+            d = {}
+
+            for k, v in data.items():
+                if isinstance(v, ObjectId):
+                    d[k] = str(v)
+                elif isinstance(v, datetime):
+                    d[k] = str(v)
+                elif isinstance(v, bytes):
+                    d[k] = str(v)
+                else:
+                    d[k] = v
+
+            array.append(d)
+
+        return {'message': array}
 
 
 class Fetch(Resource):
@@ -454,8 +501,9 @@ class Fetch(Resource):
 api.add_resource(UserSignin, '/signin')
 api.add_resource(UserSignup, '/signup')
 api.add_resource(TokenRefresh, '/token/refresh')
+api.add_resource(User, '/user')
 api.add_resource(Challenge, '/challenge')
-api.add_resource(ChallengeUser, '/challenge/user')
+api.add_resource(ChallengeSubscribtion, '/challenge/subscription')
 api.add_resource(ChallengeDetail, '/challenge/detail')
 api.add_resource(Fetch, '/fetch')
 
