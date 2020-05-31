@@ -2,7 +2,7 @@
 
 import re
 import requests as r
-
+from datetime import datetime
 from flask import Flask
 from flask_restful import Api, Resource, reqparse
 from flask_jwt_extended import (JWTManager, create_access_token,
@@ -13,6 +13,7 @@ from flask_bcrypt import Bcrypt
 from durations import Duration
 from bson.objectid import ObjectId
 from flask_cors import CORS
+import pytz
 
 app = Flask(__name__)
 app.config.from_json('config.json')
@@ -184,7 +185,7 @@ class Challenge(Resource):
         try:
             mongo.db.challenge.insert_one(
                 {'title': title, 'content': content,
-                 'duration': duration, 'editedinwebapp': True})
+                 'duration': duration, 'date': datetime.utcnow(), 'modified': datetime.utcnow()})
 
             return {'message': 'Challenge was successfully added'}
         except Exception:
@@ -262,7 +263,7 @@ class ChallengeDetail(Resource):
             statement = {'title': title,
                          'content': content,
                          'duration': duration,
-                         'editedinwebapp': True
+                         'modified': datetime.utcnow()
                          }
 
             data = mongo.db.challenge.update_one(
@@ -315,8 +316,11 @@ class Fetch(Resource):
         i = 0
         j = 0
         posts = r.get(wpapi + 'posts').json()
+        timezone = pytz.timezone("Europe/Zurich")
         for post in posts:
             challenge = mongo.db.challenge.find_one({'wpid': post['id']})
+            date = timezone.localize(datetime.strptime(post['date'], '%Y-%m-%dT%H:%M:%S'))
+            modified = timezone.localize(datetime.strptime(post['modified'], '%Y-%m-%dT%H:%M:%S'))
             try:
                 duration = int(Duration(
                     r.get(wpapi + 'tags?post=' +
@@ -329,12 +333,11 @@ class Fetch(Resource):
                 try:
                     mongo.db.challenge.insert_one({
                         'wpid': post['id'],
-                        'date': post['date'],
-                        'modified': post['modified'],
+                        'date': date,
+                        'modified': modified,
                         'title': post['title']['rendered'],
                         'content': cleantext(post['content']['rendered']),
                         'duration': duration,
-                        'editedinwebapp': False
                     })
                     i += 1
                 except Exception:
@@ -342,15 +345,16 @@ class Fetch(Resource):
 
             else:
                 try:
-                    if not challenge['editedinwebapp']:
+                    if modified > pytz.utc.localize(challenge['modified']):
+                        print("Updating from WP....")
                         data = {
                             'wpid': post['id'],
-                            'date': post['date'],
-                            'modified': post['modified'],
+                            'date': date,
+                            'modified': modified,
                             'title': post['title']['rendered'],
                             'content': cleantext(post['content']['rendered']),
                             'duration': duration
-                        }
+                                                    }
                         mongo.db.challenge.update_one(
                             {'_id': challenge['_id']},
                             {"$set": data}
