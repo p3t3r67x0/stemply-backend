@@ -298,12 +298,23 @@ class ChallengeUser(Resource):
 
         challenge_id = args.challenge_id
 
+        query = {'email': email, 'challenge_id': challenge_id}
+
+        data = mongo.db.users.find_one(query)
         statement = {'challenge_id': challenge_id}
 
-        user = mongo.db.challenge.update_one(
-            {'email': email}, {'$addToSet': statement}, upsert=True)
+        print(data)
+        if data:
+            user = mongo.db.users.update_one(
+                {'email': email}, {'$pull': statement}, upsert=True)
 
-        print(user.modified_count)
+            if user.modified_count > 0:
+                return {'message': 'User unsubscribed from challenge'}
+            else:
+                return {'message': 'Nothing to update already uptodate'}
+
+        user = mongo.db.users.update_one(
+            {'email': email}, {'$addToSet': statement}, upsert=True)
 
         if user.modified_count > 0:
             return {'message': 'User subscribed to challenge'}
