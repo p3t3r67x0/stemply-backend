@@ -295,11 +295,8 @@ class ChallengeDetail(Resource):
         duration = args.duration
 
         try:
-            statement = {'title': title,
-                         'content': content,
-                         'duration': duration,
-                         'modified': datetime.utcnow()
-                         }
+            statement = {'title': title, 'content': content,
+                         'duration': duration, 'modified': datetime.utcnow()}
 
             data = mongo.db.challenge.update_one(
                 {'_id': ObjectId(args.id)}, {'$set': statement}, upsert=True)
