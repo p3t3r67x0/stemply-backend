@@ -83,7 +83,8 @@ class UserSignup(Resource):
 
         try:
             data = mongo.db.users.insert_one(
-                {'email': email, 'password': password})
+                {'email': email, 'password': password, 'roles': ['user']})
+
             refresh_token = create_refresh_token(identity=email)
             access_token = create_access_token(identity=email)
 
@@ -332,6 +333,7 @@ class ChallengeUser(Resource):
         email = get_jwt_identity()
 
         user = mongo.db.users.find_one({'email': email})
+
         if not user:
             return {'message': 'User data was not found'}
 
