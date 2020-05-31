@@ -270,6 +270,40 @@ class ChallengeDetail(Resource):
             return {'message': 'Something went wrong'}, 500
 
 
+class ChallengeUser(Resource):
+    def __init__(self):
+        self.reqparse = reqparse.RequestParser(bundle_errors=True)
+
+        self.reqparse.add_argument('id',
+                                   type=str,
+                                   required=False,
+                                   help='No valid id provided',
+                                   location='json',
+                                   nullable=False)
+
+        super(ChallengeUser, self).__init__()
+
+    @jwt_required
+    def post(self):
+        current_user = get_jwt_identity()
+
+        data = mongo.db.users.find_one({'email': current_user})
+
+        if not data:
+            return {'message': 'User was not found'}, 404
+
+        d = {}
+
+        for k, v in data.items():
+            if isinstance(v, ObjectId):
+                d[k] = str(v)
+            else:
+                d[k] = v
+
+        print(d['_id'])
+        return {'message': 'User was found', '_id': d['_id']}
+
+
 class Fetch(Resource):
     def get(self):
         i = 0
@@ -304,6 +338,7 @@ api.add_resource(UserSignin, '/signin')
 api.add_resource(UserSignup, '/signup')
 api.add_resource(TokenRefresh, '/token/refresh')
 api.add_resource(Challenge, '/challenge')
+api.add_resource(ChallengeUser, '/challenge/user')
 api.add_resource(ChallengeDetail, '/challenge/detail')
 api.add_resource(Fetch, '/fetch')
 
