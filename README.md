@@ -12,32 +12,38 @@ A possible response could look like this
 ```json
 {
   "message": {
-    "username": "No valid username provided",
+    "email": "No valid email provided",
     "password": "No valid password provided"
   }
 }
 ```
 
-Signin or signup by default routes `\signin` or `\signup`
+Signin or signup by default routes `/signin` or `/signup`
 
 ```bash
 curl -X POST http://127.0.0.1:5000/api/v1/signin \
--d '{"username":"YOUR_USERNAME_HERE", "password":"YOUR_PASSWORD_HERE"}' \
+-d '{"email":"YOUR_USERNAME_HERE", "password":"YOUR_PASSWORD_HERE"}' \
 -H "Content-Type: application/json"
 ```
 
 ```bash
 curl -X POST http://127.0.0.1:5000/api/v1/signup \
--d '{"username":"YOUR_USERNAME_HERE", "password":"YOUR_PASSWORD_HERE"}' \
+-d '{"email":"YOUR_USERNAME_HERE", "password":"YOUR_PASSWORD_HERE"}' \
 -H "Content-Type: application/json"
 ```
 
-Call a protected resource for example the route `\challenges`
+Call a protected resource for example the route `/challenges`
 
 ```bash
 curl -X GET http://127.0.0.1:5000/api/v1/challenges \
 -H "Authorization: Bearer YOUR_ACCESS_TOKEN_HERE"
 ```
+
+Fetch latest entries from wordpress json api with `/fetch`
+
+```bash
+curl -X GET http://127.0.0.1:5000/api/v1/fetch \
+-H "Authorization: Bearer YOUR_ACCESS_TOKEN_HERE"
 
 
 ## Prerequisites
