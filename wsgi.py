@@ -289,7 +289,7 @@ class ChallengeUser(Resource):
     def __init__(self):
         self.reqparse = reqparse.RequestParser(bundle_errors=True)
 
-        self.reqparse.add_argument('challenge_id',
+        self.reqparse.add_argument('id',
                                    type=str,
                                    required=False,
                                    help='No valid challenge id provided',
@@ -303,14 +303,16 @@ class ChallengeUser(Resource):
         email = get_jwt_identity()
         args = self.reqparse.parse_args()
 
-        challenge_id = args.challenge_id
+        id = args.id
 
-        query = {'email': email, 'challenge_id': challenge_id}
+        if not id:
+            return {'message': 'Challenge id missing'}
+
+        query = {'email': email, 'challenges': {'$in': [id]}}
 
         data = mongo.db.users.find_one(query)
-        statement = {'challenge_id': challenge_id}
+        statement = {'challenges': id}
 
-        print(data)
         if data:
             user = mongo.db.users.update_one(
                 {'email': email}, {'$pull': statement}, upsert=True)
