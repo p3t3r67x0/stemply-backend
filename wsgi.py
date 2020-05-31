@@ -9,9 +9,10 @@ from flask_jwt_extended import (JWTManager, create_access_token,
                                 jwt_refresh_token_required, get_jwt_identity)
 from flask_pymongo import PyMongo
 from flask_bcrypt import Bcrypt
-
+from durations import Duration
 from bson.objectid import ObjectId
 from flask_cors import CORS
+import re
 
 app = Flask(__name__)
 app.config.from_json('config.json')
@@ -23,6 +24,8 @@ cors = CORS(app)
 
 wpapi = 'https://zackig.sbicego.ch/wp-json/wp/v2/'
 
+def cleantext(text):
+    return re.sub(re.compile('<.*?>'), '', text.replace('\n', '').replace('\r', ''))
 
 class UserSignup(Resource):
     def __init__(self):
@@ -275,7 +278,11 @@ class Fetch(Resource):
             challenge = mongo.db.challenge.find_one({'id': post['id']})
             if challenge == None:
                 try:
-                    mongo.db.challenge.insert_one({'id': post['id'], 'date': post['date'], 'modified': post['modified'], 'title': post['title']['rendered'], 'content': post['content']['rendered'], 'duration': 0})
+                    duration = int(Duration(r.get(wpapi + 'tags?post=' + str(post['id'])).json()[0]['name']).to_seconds())
+                except:
+                    duration = 604800 # default duration 1 week
+                try:
+                    mongo.db.challenge.insert_one({'id': post['id'], 'date': post['date'], 'modified': post['modified'], 'title': post['title']['rendered'], 'content': cleantext(post['content']['rendered']), 'duration': duration})
                     i+=1
                 except:
                     pass
