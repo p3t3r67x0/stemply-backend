@@ -300,15 +300,16 @@ class ChallengeUser(Resource):
 
     @jwt_required
     def get(self):
+        results = []
         email = get_jwt_identity()
 
         user = mongo.db.users.find_one({'email': email})
-
         if not user:
             return {'message': 'User data was not found'}
 
-        results = mongo.db.challenge.find(
-            {'_id': {'$in': [ObjectId(id) for id in user['challenges']]}})
+        if 'challenges' in user:
+            results = mongo.db.challenge.find(
+                {'_id': {'$in': [ObjectId(id) for id in user['challenges']]}})
 
         array = []
 
