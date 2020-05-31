@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 
 import re
+import pytz
 import requests as r
-from datetime import datetime
+
 from flask import Flask
 from flask_restful import Api, Resource, reqparse
 from flask_jwt_extended import (JWTManager, create_access_token,
@@ -11,9 +12,10 @@ from flask_jwt_extended import (JWTManager, create_access_token,
 from flask_pymongo import PyMongo
 from flask_bcrypt import Bcrypt
 from durations import Duration
-from bson.objectid import ObjectId
 from flask_cors import CORS
-import pytz
+
+from bson.objectid import ObjectId
+from datetime import datetime
 
 app = Flask(__name__)
 app.config.from_json('config.json')
@@ -167,6 +169,8 @@ class Challenge(Resource):
             for k, v in data.items():
                 if isinstance(v, ObjectId):
                     d[k] = str(v)
+                elif isinstance(v, datetime):
+                    d[k] = str(v)
                 else:
                     d[k] = v
 
@@ -185,7 +189,8 @@ class Challenge(Resource):
         try:
             mongo.db.challenge.insert_one(
                 {'title': title, 'content': content,
-                 'duration': duration, 'date': datetime.utcnow(), 'modified': datetime.utcnow()})
+                 'duration': duration, 'created': datetime.utcnow(),
+                 'modified': datetime.utcnow()})
 
             return {'message': 'Challenge was successfully added'}
         except Exception:
@@ -243,6 +248,8 @@ class ChallengeDetail(Resource):
 
             for k, v in data.items():
                 if isinstance(v, ObjectId):
+                    d[k] = str(v)
+                elif isinstance(v, datetime):
                     d[k] = str(v)
                 else:
                     d[k] = v
@@ -326,12 +333,18 @@ class Fetch(Resource):
     def get(self):
         i = 0
         j = 0
+
         posts = r.get(wpapi + 'posts').json()
-        timezone = pytz.timezone("Europe/Zurich")
+        timezone = pytz.timezone('Europe/Zurich')
+
         for post in posts:
             challenge = mongo.db.challenge.find_one({'wpid': post['id']})
-            date = timezone.localize(datetime.strptime(post['date'], '%Y-%m-%dT%H:%M:%S'))
-            modified = timezone.localize(datetime.strptime(post['modified'], '%Y-%m-%dT%H:%M:%S'))
+
+            created = timezone.localize(datetime.strptime(
+                post['created'], '%Y-%m-%dT%H:%M:%S'))
+            modified = timezone.localize(datetime.strptime(
+                post['modified'], '%Y-%m-%dT%H:%M:%S'))
+
             try:
                 duration = int(Duration(
                     r.get(wpapi + 'tags?post=' +
@@ -344,7 +357,7 @@ class Fetch(Resource):
                 try:
                     mongo.db.challenge.insert_one({
                         'wpid': post['id'],
-                        'date': date,
+                        'created': created,
                         'modified': modified,
                         'title': post['title']['rendered'],
                         'content': cleantext(post['content']['rendered']),
@@ -357,19 +370,20 @@ class Fetch(Resource):
             else:
                 try:
                     if modified > pytz.utc.localize(challenge['modified']):
-                        print("Updating from WP....")
+                        print('Updating from WP....')
+
                         data = {
                             'wpid': post['id'],
-                            'date': date,
+                            'created': created,
                             'modified': modified,
                             'title': post['title']['rendered'],
                             'content': cleantext(post['content']['rendered']),
                             'duration': duration
-                                                    }
+                        }
+
                         mongo.db.challenge.update_one(
-                            {'_id': challenge['_id']},
-                            {"$set": data}
-                        )
+                            {'_id': challenge['_id']}, {'$set': data})
+
                         j += 1
                 except Exception:
                     pass
