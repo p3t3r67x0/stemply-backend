@@ -404,7 +404,7 @@ class Fetch(Resource):
             challenge = mongo.db.challenge.find_one({'wpid': post['id']})
 
             created = timezone.localize(datetime.strptime(
-                post['created'], '%Y-%m-%dT%H:%M:%S'))
+                post['date'], '%Y-%m-%dT%H:%M:%S'))
             modified = timezone.localize(datetime.strptime(
                 post['modified'], '%Y-%m-%dT%H:%M:%S'))
 
