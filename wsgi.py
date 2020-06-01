@@ -208,22 +208,12 @@ class Challenge(Resource):
     @jwt_required
     @user_is('user')
     def get(self):
-        array = []
+        data = mongo.db.challenge.find()
 
-        for data in mongo.db.challenge.find():
-            d = {}
+        if not data:
+            return {'message': 'No chalenges was found ask for support'}
 
-            for k, v in data.items():
-                if isinstance(v, ObjectId):
-                    d[k] = str(v)
-                elif isinstance(v, datetime):
-                    d[k] = str(v)
-                else:
-                    d[k] = v
-
-            array.append(d)
-
-        return {'message': array}
+        return {'message': normalize(data)}
 
     @jwt_required
     @user_is('admin')
@@ -237,8 +227,7 @@ class Challenge(Resource):
         try:
             mongo.db.challenge.insert_one(
                 {'title': title, 'content': content,
-                 'duration': duration, 'created': datetime.utcnow(),
-                 'modified': datetime.utcnow()})
+                 'duration': duration, 'created': datetime.utcnow()})
 
             return {'message': 'Challenge was successfully added'}
         except Exception:
@@ -284,28 +273,12 @@ class ChallengeDetail(Resource):
     def post(self):
         args = self.reqparse.parse_args()
 
-        if not args.id:
-            return {'message': 'No valid id provided'}, 404
-
-        array = []
-
         data = mongo.db.challenge.find_one({'_id': ObjectId(args.id)})
-        print(args.id)
 
-        if data:
-            d = {}
+        if not data:
+            return {'message': 'No challenge was found ask support'}
 
-            for k, v in data.items():
-                if isinstance(v, ObjectId):
-                    d[k] = str(v)
-                elif isinstance(v, datetime):
-                    d[k] = str(v)
-                else:
-                    d[k] = v
-
-            array.append(d)
-
-        return {'message': array}
+        return {'message': normalize(data)}
 
     @jwt_required
     @user_is('admin')
@@ -327,8 +300,7 @@ class ChallengeDetail(Resource):
                 return {'message': 'Challenge was successfully updated'}
             else:
                 return {'message': 'Nothing to update already uptodate'}
-        except Exception as e:
-            print(e)
+        except Exception:
             return {'message': 'Something went wrong'}, 500
 
 
@@ -363,26 +335,12 @@ class ChallengeSubscribtion(Resource):
         if not user:
             return {'message': 'User data was not found'}, 404
 
+        # TODO: refoctor pythonic way with not
         if 'challenges' in user:
             results = mongo.db.challenge.find(
                 {'_id': {'$in': [ObjectId(id) for id in user['challenges']]}})
 
-        array = []
-
-        for data in results:
-            d = {}
-
-            for k, v in data.items():
-                if isinstance(v, ObjectId):
-                    d[k] = str(v)
-                elif isinstance(v, datetime):
-                    d[k] = str(v)
-                else:
-                    d[k] = v
-
-            array.append(d)
-
-        return {'message': array}
+        return {'message': normalize(results)}
 
     @jwt_required
     @user_is('admin')
@@ -437,34 +395,38 @@ class User(Resource):
         if not users:
             return {'message': 'No users were found ask for support'}, 404
 
-        array = []
-
-        for data in users:
-            d = {}
-
-            for k, v in data.items():
-                if isinstance(v, ObjectId):
-                    d[k] = str(v)
-                elif isinstance(v, datetime):
-                    d[k] = str(v)
-                elif isinstance(v, bytes):
-                    d[k] = str(v)
-                else:
-                    d[k] = v
-
-            array.append(d)
-
-        return {'message': array}
+        return {'message': normalize(users)}
 
 
 class ChallengeTask(Resource):
     def __init__(self):
         self.reqparse = reqparse.RequestParser(bundle_errors=True)
 
-        self.reqparse.add_argument('challenge_id',
+        self.reqparse.add_argument('id',
                                    type=str,
                                    required=False,
-                                   help='No valid challenge id provided',
+                                   help='No valid id provided',
+                                   location='json',
+                                   nullable=False)
+
+        self.reqparse.add_argument('title',
+                                   type=str,
+                                   required=False,
+                                   help='No valid title provided',
+                                   location='json',
+                                   nullable=False)
+
+        self.reqparse.add_argument('content',
+                                   type=str,
+                                   required=False,
+                                   help='No valid content provided',
+                                   location='json',
+                                   nullable=False)
+
+        self.reqparse.add_argument('duration',
+                                   type=str,
+                                   required=False,
+                                   help='No valid duration provided',
                                    location='json',
                                    nullable=False)
 
@@ -476,7 +438,7 @@ class ChallengeTask(Resource):
         challenges = []
 
         for challenge in mongo.db.challenge.find():
-            tasks = mongo.db.tasks.find({'cid': challenge['_id']})
+            tasks = mongo.db.tasks.find({'cid': ObjectId(challenge['_id'])})
 
             if tasks:
                 challenge['tasks'] = normalize(tasks)
@@ -487,6 +449,87 @@ class ChallengeTask(Resource):
             return {'message': 'No challenges were found create one'}, 404
 
         return {'message': normalize(challenges)}
+
+    @jwt_required
+    @user_is('admin')
+    def post(self):
+        args = self.reqparse.parse_args()
+
+        title = args.title
+        content = args.content
+        duration = args.duration
+
+        challenge = mongo.db.challenge.find_one({'_id': ObjectId(args.id)})
+
+        if not challenge:
+            return {'message': 'Challenge id was not found'}
+
+        try:
+            mongo.db.tasks.insert_one(
+                {'cid': ObjectId(args.id), 'title': title, 'content': content,
+                 'duration': duration, 'created': datetime.utcnow()})
+
+            return {'message': 'Task was successfully added'}
+        except Exception:
+            return {'message': 'Something went wrong'}, 500
+
+
+class ChallengeTaskDetail(Resource):
+    def __init__(self):
+        self.reqparse = reqparse.RequestParser(bundle_errors=True)
+
+        self.reqparse.add_argument('id',
+                                   type=str,
+                                   required=False,
+                                   help='No valid id provided',
+                                   location='json',
+                                   nullable=False)
+
+        self.reqparse.add_argument('title',
+                                   type=str,
+                                   required=False,
+                                   help='No valid title provided',
+                                   location='json',
+                                   nullable=False)
+
+        self.reqparse.add_argument('content',
+                                   type=str,
+                                   required=False,
+                                   help='No valid content provided',
+                                   location='json',
+                                   nullable=False)
+
+        self.reqparse.add_argument('duration',
+                                   type=str,
+                                   required=False,
+                                   help='No valid duration provided',
+                                   location='json',
+                                   nullable=False)
+
+        super(ChallengeTaskDetail, self).__init__()
+
+    @jwt_required
+    @user_is('admin')
+    def put(self):
+        args = self.reqparse.parse_args()
+
+        title = args.title
+        content = args.content
+        duration = args.duration
+
+        try:
+            statement = {'title': title, 'content': content,
+                         'duration': duration, 'modified': datetime.utcnow()}
+
+            data = mongo.db.tasks.update_one(
+                {'_id': ObjectId(args.id)}, {'$set': statement}, upsert=True)
+
+            if data.modified_count > 0:
+                return {'message': 'Task was successfully updated'}
+            else:
+                return {'message': 'Nothing to update already uptodate'}
+        except Exception:
+            return {'message': 'Something went wrong'}, 500
 
 
 class Fetch(Resource):
@@ -559,6 +602,7 @@ api.add_resource(Challenge, '/challenge')
 api.add_resource(ChallengeSubscribtion, '/challenge/subscription')
 api.add_resource(ChallengeDetail, '/challenge/detail')
 api.add_resource(ChallengeTask, '/challenge/task')
+api.add_resource(ChallengeTaskDetail, '/challenge/task/detail')
 api.add_resource(Fetch, '/fetch')
 
 
