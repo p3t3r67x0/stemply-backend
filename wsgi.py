@@ -34,6 +34,27 @@ def cleantext(text):
     return re.sub(re.compile('<.*?>'), '', text.replace('\n', '').replace('\r', ''))
 
 
+def normalize(objects):
+    array = []
+
+    for object in objects:
+        d = {}
+
+        for k, v in object.items():
+            if isinstance(v, ObjectId):
+                d[k] = str(v)
+            elif isinstance(v, datetime):
+                d[k] = str(v)
+            elif isinstance(v, bytes):
+                d[k] = str(v)
+            else:
+                d[k] = v
+
+        array.append(d)
+
+    return array
+
+
 def user_is(role):
     def wrapper(func):
         @wraps(func)
@@ -436,6 +457,38 @@ class User(Resource):
         return {'message': array}
 
 
+class ChallengeTask(Resource):
+    def __init__(self):
+        self.reqparse = reqparse.RequestParser(bundle_errors=True)
+
+        self.reqparse.add_argument('challenge_id',
+                                   type=str,
+                                   required=False,
+                                   help='No valid challenge id provided',
+                                   location='json',
+                                   nullable=False)
+
+        super(ChallengeTask, self).__init__()
+
+    @jwt_required
+    @user_is('user')
+    def get(self):
+        challenges = []
+
+        for challenge in mongo.db.challenge.find():
+            tasks = mongo.db.tasks.find({'cid': challenge['_id']})
+
+            if tasks:
+                challenge['tasks'] = normalize(tasks)
+
+            challenges.append(challenge)
+
+        if not challenges:
+            return {'message': 'No challenges were found create one'}, 404
+
+        return {'message': normalize(challenges)}
+
+
 class Fetch(Resource):
     @jwt_required
     @user_is('admin')
@@ -505,6 +558,7 @@ api.add_resource(User, '/user')
 api.add_resource(Challenge, '/challenge')
 api.add_resource(ChallengeSubscribtion, '/challenge/subscription')
 api.add_resource(ChallengeDetail, '/challenge/detail')
+api.add_resource(ChallengeTask, '/challenge/task')
 api.add_resource(Fetch, '/fetch')
 
 
