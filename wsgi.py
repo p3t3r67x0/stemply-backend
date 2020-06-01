@@ -13,6 +13,7 @@ from flask_pymongo import PyMongo
 from flask_bcrypt import Bcrypt
 from flask_cors import CORS
 
+from pymongo.cursor import Cursor
 from bson.objectid import ObjectId
 from durations import Duration
 from datetime import datetime
@@ -34,25 +35,32 @@ def cleantext(text):
     return re.sub(re.compile('<.*?>'), '', text.replace('\n', '').replace('\r', ''))
 
 
+def analyze(o):
+    d = {}
+
+    for k, v in o.items():
+        if isinstance(v, ObjectId):
+            d[k] = str(v)
+        elif isinstance(v, datetime):
+            d[k] = str(v)
+        elif isinstance(v, bytes):
+            d[k] = str(v)
+        else:
+            d[k] = v
+
+    return d
+
+
 def normalize(objects):
-    array = []
+    if isinstance(objects, list) or isinstance(objects, Cursor):
+        array = []
 
-    for object in objects:
-        d = {}
+        for object in objects:
+            array.append(analyze(object))
 
-        for k, v in object.items():
-            if isinstance(v, ObjectId):
-                d[k] = str(v)
-            elif isinstance(v, datetime):
-                d[k] = str(v)
-            elif isinstance(v, bytes):
-                d[k] = str(v)
-            else:
-                d[k] = v
-
-        array.append(d)
-
-    return array
+        return array
+    elif isinstance(objects, dict):
+        return analyze(objects)
 
 
 def user_is(role):
