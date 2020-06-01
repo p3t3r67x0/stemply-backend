@@ -259,7 +259,7 @@ class ChallengeDetail(Resource):
         super(ChallengeDetail, self).__init__()
 
     @jwt_required
-    @user_is('admin')
+    @user_is('user')
     def post(self):
         args = self.reqparse.parse_args()
 
