@@ -44,7 +44,7 @@ Fetch latest entries from wordpress json api with `/fetch`
 ```bash
 curl -X GET http://127.0.0.1:5000/api/v1/fetch \
 -H "Authorization: Bearer YOUR_ACCESS_TOKEN_HERE"
-
+```
 
 ## Prerequisites
 
@@ -57,6 +57,21 @@ Create a `config.json` file in the `/` folder
   "JWT_SECRET_KEY": "YOUR_JWT_SECRET_KEY_HERE"
 }
 ```
+
+
+## Setup MongoDB
+
+```bash
+docker pull mongo
+```
+
+Run mongodb with docker and some parameters below
+
+```bash
+docker run --name mongodb --restart always -d \
+-p 127.0.0.1:27017:27017 -v ~/data:/data/db mongo:latest
+```
+
 
 ## Build Setup
 
@@ -79,19 +94,19 @@ gunicorn --bind 127.0.0.1:5000 wsgi:app --access-logfile - --error-logfile - --l
 
 ## Systemd Setup
 
-Create a file `/etc/systemd/system/stemply.service` with following content
+Create a file `/etc/systemd/system/zackig-api.service` with following content
 
 ```bash
 [Unit]
-Description=Gunicorn instance to serve stemply
+Description=Gunicorn instance to serve zackig-api
 After=network.target
 
 [Service]
 User=<USER>
 Group=www-data
-WorkingDirectory=/home/<USER>/git/stemply-webapp/api
-Environment="PATH=/home/<USER>/git/stemply-webapp/api/venv/bin"
-ExecStart=/home/<USER>/git/stemply-webapp/api/venv/bin/gunicorn --bind 127.0.0.1:5000 wsgi:app --workers 4 --threads 2 --access-logfile /var/log/stemply/access.log --error-logfile /var/log/stemply/error.log --log-level INFO
+WorkingDirectory=/home/<USER>/git/zackig-api-backend
+Environment="PATH=/home/<USER>/git/zackig-api-backend/venv/bin"
+ExecStart=/home/<USER>/git/zackig-api-backend/venv/bin/gunicorn --bind 127.0.0.1:5000 wsgi:app --workers 4 --threads 2 --access-logfile /var/log/zackig-api/access.log --error-logfile /var/log/zackig-api/error.log --log-level INFO
 Restart=on-failure
 RestartSec=2s
 
@@ -102,8 +117,8 @@ WantedBy=multi-user.target
 Start the service and enable the service
 
 ```bash
-sudo systemctl start stemply
-sudo systemctl enable stemply
+sudo systemctl start zackig-api
+sudo systemctl enable zackig-api
 ```
 
 ## Setup Nginx with SSL
