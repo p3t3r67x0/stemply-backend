@@ -284,7 +284,7 @@ class ChallengeDetail(Resource):
         data = mongo.db.challenge.find_one({'_id': ObjectId(args.id)})
 
         if not data:
-            return {'message': 'No challenge was found ask support'}
+            return {'message': 'No challenge was found ask for support'}
 
         return {'message': normalize(data)}
 
@@ -515,6 +515,18 @@ class ChallengeTaskDetail(Resource):
                                    nullable=False)
 
         super(ChallengeTaskDetail, self).__init__()
+
+    @jwt_required
+    @user_is('user')
+    def post(self):
+        args = self.reqparse.parse_args()
+
+        data = mongo.db.tasks.find_one({'_id': ObjectId(args.id)})
+
+        if not data:
+            return {'message': 'No task was found ask for support'}
+
+        return {'message': normalize(data)}
 
     @jwt_required
     @user_is('admin')
