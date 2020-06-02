@@ -13,6 +13,7 @@ from flask_pymongo import PyMongo
 from flask_bcrypt import Bcrypt
 from flask_cors import CORS
 
+from jwt.exceptions import ExpiredSignatureError
 from pymongo.errors import ServerSelectionTimeoutError
 from werkzeug.exceptions import (NotFound, BadRequest, BadGateway,
                                  MethodNotAllowed, RequestEntityTooLarge,
@@ -74,6 +75,11 @@ def handle_request_entity_too_large(e):
 @app.errorhandler(ServerSelectionTimeoutError)
 def handle_server_selection_timeout(e):
     return jsonify(message='Something went wrong application error'), 500
+
+
+@app.errorhandler(ExpiredSignatureError)
+def handle_expired_signature_error(e):
+    return jsonify(message='Token signature has expired'), 401
 
 
 def cleantext(text):
