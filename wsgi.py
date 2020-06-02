@@ -552,6 +552,63 @@ class ChallengeTaskDetail(Resource):
             return {'message': 'Something went wrong'}, 500
 
 
+class ChallengeTaskProgress(Resource):
+    def __init__(self):
+        self.reqparse = reqparse.RequestParser(bundle_errors=True)
+
+        self.reqparse.add_argument('challenge_id',
+                                   type=str,
+                                   required=False,
+                                   help='No valid challenge id provided',
+                                   location='json',
+                                   nullable=False)
+
+        self.reqparse.add_argument('task_id',
+                                   type=str,
+                                   required=False,
+                                   help='No valid task id provided',
+                                   location='json',
+                                   nullable=False)
+
+        super(ChallengeTaskProgress, self).__init__()
+
+    @jwt_required
+    @user_is('user')
+    def put(self):
+        args = self.reqparse.parse_args()
+        email = get_jwt_identity()
+
+        challenge_id = args.challenge_id
+        task_id = args.task_id
+
+        query = {'email': email, 'progress': {
+            '$in': [{'cid': challenge_id, 'tid': task_id}]}}
+
+        data = mongo.db.users.find_one(query)
+        statement = {'progress': {'cid': challenge_id, 'tid': task_id}}
+
+        if data:
+            user = mongo.db.users.update_one(
+                {'email': email}, {'$pull': statement}, upsert=True)
+
+            if user.modified_count > 0:
+                return {'message': 'Changed task status to undone',
+                        'progress': 'undone'}
+            else:
+                return {'message': 'Nothing to update already uptodate',
+                        'progress': 'undone'}
+
+        user = mongo.db.users.update_one(
+            {'email': email}, {'$addToSet': statement}, upsert=True)
+
+        if user.modified_count > 0:
+            return {'message': 'Changed task status to done',
+                    'progress': 'done'}
+        else:
+            return {'message': 'Nothing to update already uptodate',
+                    'progress': 'done'}
+
+
 class Fetch(Resource):
     @jwt_required
     @user_is('admin')
@@ -617,12 +674,17 @@ class Fetch(Resource):
 api.add_resource(UserSignin, '/signin')
 api.add_resource(UserSignup, '/signup')
 api.add_resource(TokenRefresh, '/token/refresh')
+
 api.add_resource(User, '/user')
+
 api.add_resource(Challenge, '/challenge')
-api.add_resource(ChallengeSubscribtion, '/challenge/subscription')
 api.add_resource(ChallengeDetail, '/challenge/detail')
+api.add_resource(ChallengeSubscribtion, '/challenge/subscription')
+
 api.add_resource(ChallengeTask, '/challenge/task')
 api.add_resource(ChallengeTaskDetail, '/challenge/task/detail')
+api.add_resource(ChallengeTaskProgress, '/challenge/task/progress')
+
 api.add_resource(Fetch, '/fetch')
 
 
