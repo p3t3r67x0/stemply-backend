@@ -271,7 +271,7 @@ class Challenge(Resource):
         data = mongo.db.challenge.find()
 
         if not data:
-            return {'message': 'No chalenges was found ask for support'}
+            return {'message': 'No challenge was found ask for support'}
 
         return {'message': normalize(data)}
 
