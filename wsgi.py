@@ -173,8 +173,8 @@ class UserSignin(Resource):
 class TokenRefresh(Resource):
     @jwt_refresh_token_required
     def post(self):
-        current_user = get_jwt_identity()
-        access_token = create_access_token(identity=current_user)
+        email = get_jwt_identity()
+        access_token = create_access_token(identity=email)
 
         return {'access_token': access_token}
 
@@ -394,6 +394,32 @@ class User(Resource):
                                    nullable=False)
 
         super(User, self).__init__()
+
+    @jwt_required
+    @user_is('user')
+    def get(self):
+        email = get_jwt_identity()
+
+        user = mongo.db.users.find_one({'email': email}, {'password': 0})
+
+        if not user:
+            return {'message': 'User data were not found ask for support'}, 404
+
+        return {'message': normalize(user)}
+
+
+class UserList(Resource):
+    def __init__(self):
+        self.reqparse = reqparse.RequestParser(bundle_errors=True)
+
+        self.reqparse.add_argument('id',
+                                   type=str,
+                                   required=False,
+                                   help='No valid user id provided',
+                                   location='json',
+                                   nullable=False)
+
+        super(UserList, self).__init__()
 
     @jwt_required
     @user_is('admin')
@@ -676,6 +702,7 @@ api.add_resource(UserSignup, '/signup')
 api.add_resource(TokenRefresh, '/token/refresh')
 
 api.add_resource(User, '/user')
+api.add_resource(UserList, '/user/list')
 
 api.add_resource(Challenge, '/challenge')
 api.add_resource(ChallengeDetail, '/challenge/detail')
