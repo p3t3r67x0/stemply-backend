@@ -9,6 +9,8 @@ api.add_resource(res.UserSignup, '/signup')
 api.add_resource(res.UserSignin, '/signin')
 api.add_resource(res.TokenRefresh, '/token/refresh')
 
+api.add_resource(res.ConfirmToken, '/confirm')
+
 api.add_resource(res.User, '/user')
 api.add_resource(res.UserList, '/user/list')
 
