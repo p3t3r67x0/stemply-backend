@@ -4,7 +4,7 @@ import re
 import pytz
 import requests as r
 
-from flask import Flask
+from flask import Flask, jsonify
 from flask_restful import Api, Resource, reqparse
 from flask_jwt_extended import (JWTManager, create_access_token,
                                 create_refresh_token, jwt_required,
@@ -12,6 +12,11 @@ from flask_jwt_extended import (JWTManager, create_access_token,
 from flask_pymongo import PyMongo
 from flask_bcrypt import Bcrypt
 from flask_cors import CORS
+
+from pymongo.errors import ServerSelectionTimeoutError
+from werkzeug.exceptions import (NotFound, BadRequest, BadGateway,
+                                 MethodNotAllowed, RequestEntityTooLarge,
+                                 InternalServerError)
 
 from pymongo.cursor import Cursor
 from bson.objectid import ObjectId
@@ -29,6 +34,46 @@ mongo = PyMongo(app)
 cors = CORS(app)
 
 wpapi = 'https://zackig.sbicego.ch/wp-json/wp/v2/'
+
+
+@app.errorhandler(TypeError)
+def handle_type_error(e):
+    return jsonify(message='Something went wrong application error'), 500
+
+
+@app.errorhandler(NotFound)
+def handle_not_found(e):
+    return jsonify(message='Requested resource was not found on server'), 404
+
+
+@app.errorhandler(BadRequest)
+def handle_bad_request(e):
+    return jsonify(message='Bad request the error has been reported'), 400
+
+
+@app.errorhandler(BadGateway)
+def handle_bad_gateway(e):
+    return jsonify(message='Bad gateway application is not reachable'), 502
+
+
+@app.errorhandler(MethodNotAllowed)
+def handle_method_not_allowed(e):
+    return jsonify(message='The method is not allowed for resource'), 405
+
+
+@app.errorhandler(InternalServerError)
+def handle_internal_server_error(e):
+    return jsonify(message='Something went wrong internal server error'), 500
+
+
+@app.errorhandler(RequestEntityTooLarge)
+def handle_request_entity_too_large(e):
+    return jsonify(message='File transmitted exceeds the capacity limit'), 413
+
+
+@app.errorhandler(ServerSelectionTimeoutError)
+def handle_server_selection_timeout(e):
+    return jsonify(message='Something went wrong application error'), 500
 
 
 def cleantext(text):
