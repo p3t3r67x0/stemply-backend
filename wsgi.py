@@ -26,60 +26,54 @@ from datetime import datetime
 from functools import wraps
 
 
+errors = {
+    'TypeError': {
+        'status': 500,
+        'message': 'Something went wrong application error'
+    },
+    'NotFound': {
+        'status': 404,
+        'message': 'Requested resource was not found on server'
+    },
+    'BadRequest': {
+        'status': 400,
+        'message': 'Bad request the error has been reported'
+    },
+    'BadGateway': {
+        'status': 502,
+        'message': 'Bad gateway application is not reachable'
+    },
+    'MethodNotAllowed': {
+        'status': 405,
+        'message': 'The method is not allowed for resource'
+    },
+    'InternalServerError': {
+        'status': 500,
+        'message': 'Something went wrong internal server error'
+    },
+    'RequestEntityTooLarge': {
+        'status': 413,
+        'message': 'File transmitted exceeds the capacity limit'
+    },
+    'ServerSelectionTimeoutError': {
+        'status': 500,
+        'message': 'Something went wrong application error'
+    },
+    'ExpiredSignatureError': {
+        'status': 401,
+        'message': 'Token signature has expired'
+    }
+}
+
 app = Flask(__name__)
 app.config.from_json('config.json')
-api = Api(app, prefix='/api/v1')
+api = Api(app, errors=errors, prefix='/api/v1')
 jwt = JWTManager(app)
 bcrypt = Bcrypt(app)
 mongo = PyMongo(app)
 cors = CORS(app)
 
 wpapi = 'https://zackig.sbicego.ch/wp-json/wp/v2/'
-
-
-@app.errorhandler(TypeError)
-def handle_type_error(e):
-    return jsonify(message='Something went wrong application error'), 500
-
-
-@app.errorhandler(NotFound)
-def handle_not_found(e):
-    return jsonify(message='Requested resource was not found on server'), 404
-
-
-@app.errorhandler(BadRequest)
-def handle_bad_request(e):
-    return jsonify(message='Bad request the error has been reported'), 400
-
-
-@app.errorhandler(BadGateway)
-def handle_bad_gateway(e):
-    return jsonify(message='Bad gateway application is not reachable'), 502
-
-
-@app.errorhandler(MethodNotAllowed)
-def handle_method_not_allowed(e):
-    return jsonify(message='The method is not allowed for resource'), 405
-
-
-@app.errorhandler(InternalServerError)
-def handle_internal_server_error(e):
-    return jsonify(message='Something went wrong internal server error'), 500
-
-
-@app.errorhandler(RequestEntityTooLarge)
-def handle_request_entity_too_large(e):
-    return jsonify(message='File transmitted exceeds the capacity limit'), 413
-
-
-@app.errorhandler(ServerSelectionTimeoutError)
-def handle_server_selection_timeout(e):
-    return jsonify(message='Something went wrong application error'), 500
-
-
-@app.errorhandler(ExpiredSignatureError)
-def handle_expired_signature_error(e):
-    return jsonify(message='Token signature has expired'), 401
 
 
 def cleantext(text):
