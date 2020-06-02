@@ -393,7 +393,7 @@ class ChallengeSubscribtion(Resource):
         user = mongo.db.users.find_one({'email': email})
 
         if not user:
-            return {'message': 'User data was not found'}, 404
+            return {'message': 'User was not found ask for support'}, 404
 
         # TODO: refoctor pythonic way with not
         if 'challenges' in user:
@@ -455,7 +455,7 @@ class User(Resource):
         user = mongo.db.users.find_one({'email': email}, {'password': 0})
 
         if not user:
-            return {'message': 'User data were not found ask for support'}, 404
+            return {'message': 'User was not found ask for support'}, 404
 
         return {'message': normalize(user)}
 
