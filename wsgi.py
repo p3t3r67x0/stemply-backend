@@ -133,6 +133,13 @@ class UserSignup(Resource):
     def __init__(self):
         self.reqparse = reqparse.RequestParser(bundle_errors=True)
 
+        self.reqparse.add_argument('name',
+                                   type=str,
+                                   required=True,
+                                   help='No valid name provided',
+                                   location='json',
+                                   nullable=False)
+
         self.reqparse.add_argument('email',
                                    type=str,
                                    required=True,
@@ -152,24 +159,21 @@ class UserSignup(Resource):
     def post(self):
         args = self.reqparse.parse_args()
 
+        name = args.name
         email = args.email
         password = bcrypt.generate_password_hash(args.password)
 
         try:
-            data = mongo.db.users.insert_one(
-                {'email': email, 'password': password, 'roles': ['user']})
+            user = mongo.db.users.insert_one(
+                {'name': name, 'email': email,
+                 'password': password, 'roles': ['user']})
 
-            refresh_token = create_refresh_token(identity=email)
-            access_token = create_access_token(identity=email)
+            if not user.inserted_id:
+                return {'message': 'Something went wrong try again'}, 400
 
-            return {
-                'message': 'User {} was created'.format(email),
-                'refresh_token': refresh_token,
-                'access_token': access_token,
-                'user_id': str(data.inserted_id)
-            }
+            return {'message': 'User {} was created'.format(email)}
         except Exception:
-            return {'message': 'Something went wrong'}, 500
+            return {'message': 'Account already exists try to login'}, 409
 
 
 class UserSignin(Resource):
@@ -216,6 +220,7 @@ class UserSignin(Resource):
             }
         else:
             return {'message': 'Wrong password or email try again'}, 400
+
 
 class TokenRefresh(Resource):
     @jwt_refresh_token_required
@@ -760,6 +765,9 @@ api.add_resource(ChallengeTaskDetail, '/challenge/task/detail')
 api.add_resource(ChallengeTaskProgress, '/challenge/task/progress')
 
 api.add_resource(Fetch, '/fetch')
+
+# create index on collections
+mongo.db.users.create_index([('email', 1)], unique=True)
 
 
 if __name__ == '__main__':
