@@ -200,6 +200,9 @@ class UserSignin(Resource):
 
         user = mongo.db.users.find_one({'email': email})
 
+        if not user:
+            return {'message': 'Wrong password or email try again'}, 400
+
         if user and bcrypt.check_password_hash(user['password'], password):
             refresh_token = create_refresh_token(identity=email)
             access_token = create_access_token(identity=email)
@@ -212,8 +215,7 @@ class UserSignin(Resource):
                 'user_id': str(user['_id'])
             }
         else:
-            return {'message': 'Wrong credentials'}
-
+            return {'message': 'Wrong password or email try again'}, 400
 
 class TokenRefresh(Resource):
     @jwt_refresh_token_required
