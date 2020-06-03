@@ -244,6 +244,7 @@ class Challenge(Resource):
         try:
             to_date = datetime.strptime(to_date, '%d-%m-%Y')
             from_date = datetime.strptime(from_date, '%d-%m-%Y')
+            delta = to_date - from_date
         except Exception as e:
             print(e)
             return {'message': 'Invalid date string must be DD-MM-YYYY'}, 400
@@ -251,7 +252,8 @@ class Challenge(Resource):
         try:
             mongo.db.challenge.insert_one(
                 {'title': title, 'content': content, 'to': to_date,
-                 'from': from_date, 'created': datetime.utcnow()})
+                 'from': from_date, 'duration': delta.days,
+                 'created': datetime.utcnow()})
 
             return {'message': 'Challenge was successfully added'}
         except Exception:
@@ -324,13 +326,15 @@ class ChallengeDetail(Resource):
         try:
             to_date = datetime.strptime(to_date, '%d-%m-%Y')
             from_date = datetime.strptime(from_date, '%d-%m-%Y')
+            delta = to_date - from_date
         except Exception as e:
             print(e)
             return {'message': 'Invalid date string must be DD-MM-YYYY'}, 400
 
         try:
             statement = {'title': title, 'content': content, 'to': to_date,
-                         'from': from_date, 'modified': datetime.utcnow()}
+                         'from': from_date, 'duration': delta.days,
+                         'modified': datetime.utcnow()}
 
             data = mongo.db.challenge.update_one(
                 {'_id': ObjectId(args.id)}, {'$set': statement}, upsert=True)
@@ -540,6 +544,7 @@ class ChallengeTask(Resource):
         try:
             to_date = datetime.strptime(to_date, '%d-%m-%Y')
             from_date = datetime.strptime(from_date, '%d-%m-%Y')
+            delta = to_date - from_date
         except Exception as e:
             print(e)
             return {'message': 'Invalid date string must be DD-MM-YYYY'}, 400
@@ -548,7 +553,7 @@ class ChallengeTask(Resource):
             mongo.db.tasks.insert_one(
                 {'cid': ObjectId(args.id), 'title': title,
                  'content': content, 'from': from_date, 'to': to_date,
-                 'created': datetime.utcnow()})
+                 'duration': delta.days, 'created': datetime.utcnow()})
 
             return {'message': 'Task was successfully added'}
         except Exception:
@@ -621,13 +626,15 @@ class ChallengeTaskDetail(Resource):
         try:
             to_date = datetime.strptime(to_date, '%d-%m-%Y')
             from_date = datetime.strptime(from_date, '%d-%m-%Y')
+            delta = to_date - from_date
         except Exception as e:
             print(e)
             return {'message': 'Invalid date string must be DD-MM-YYYY'}, 400
 
         try:
             statement = {'title': title, 'content': content, 'to': to_date,
-                         'from': from_date, 'modified': datetime.utcnow()}
+                         'from': from_date, 'duration': delta.days,
+                         'modified': datetime.utcnow()}
 
             data = mongo.db.tasks.update_one(
                 {'_id': ObjectId(args.id)}, {'$set': statement}, upsert=True)
