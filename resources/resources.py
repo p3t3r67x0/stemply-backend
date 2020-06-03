@@ -205,10 +205,17 @@ class Challenge(Resource):
                                    location='json',
                                    nullable=False)
 
-        self.reqparse.add_argument('duration',
+        self.reqparse.add_argument('from_date',
                                    type=str,
                                    required=False,
-                                   help='No valid duration provided',
+                                   help='No valid from date provided',
+                                   location='json',
+                                   nullable=False)
+
+        self.reqparse.add_argument('to_date',
+                                   type=str,
+                                   required=False,
+                                   help='No valid to date provided',
                                    location='json',
                                    nullable=False)
 
@@ -231,12 +238,20 @@ class Challenge(Resource):
 
         title = args.title
         content = args.content
-        duration = args.duration
+        from_date = args.from_date
+        to_date = args.to_date
+
+        try:
+            to_date = datetime.strptime(to_date, '%d-%m-%Y')
+            from_date = datetime.strptime(from_date, '%d-%m-%Y')
+        except Exception as e:
+            print(e)
+            return {'message': 'Invalid date string must be DD-MM-YYYY'}, 400
 
         try:
             mongo.db.challenge.insert_one(
-                {'title': title, 'content': content,
-                 'duration': duration, 'created': datetime.utcnow()})
+                {'title': title, 'content': content, 'to': to_date,
+                 'from': from_date, 'created': datetime.utcnow()})
 
             return {'message': 'Challenge was successfully added'}
         except Exception:
@@ -473,10 +488,17 @@ class ChallengeTask(Resource):
                                    location='json',
                                    nullable=False)
 
-        self.reqparse.add_argument('duration',
+        self.reqparse.add_argument('from_date',
                                    type=str,
                                    required=False,
-                                   help='No valid duration provided',
+                                   help='No valid from date provided',
+                                   location='json',
+                                   nullable=False)
+
+        self.reqparse.add_argument('to_date',
+                                   type=str,
+                                   required=False,
+                                   help='No valid to date provided',
                                    location='json',
                                    nullable=False)
 
@@ -507,7 +529,8 @@ class ChallengeTask(Resource):
 
         title = args.title
         content = args.content
-        duration = args.duration
+        from_date = args.from_date
+        to_date = args.to_date
 
         challenge = mongo.db.challenge.find_one({'_id': ObjectId(args.id)})
 
@@ -515,9 +538,17 @@ class ChallengeTask(Resource):
             return {'message': 'Challenge id was not found'}
 
         try:
+            to_date = datetime.strptime(to_date, '%d-%m-%Y')
+            from_date = datetime.strptime(from_date, '%d-%m-%Y')
+        except Exception as e:
+            print(e)
+            return {'message': 'Invalid date string must be DD-MM-YYYY'}, 400
+
+        try:
             mongo.db.tasks.insert_one(
-                {'cid': ObjectId(args.id), 'title': title, 'content': content,
-                 'duration': duration, 'created': datetime.utcnow()})
+                {'cid': ObjectId(args.id), 'title': title,
+                 'content': content, 'from': from_date, 'to': to_date,
+                 'created': datetime.utcnow()})
 
             return {'message': 'Task was successfully added'}
         except Exception:
