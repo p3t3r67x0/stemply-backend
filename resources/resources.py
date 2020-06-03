@@ -636,6 +636,83 @@ class ChallengeTaskProgress(Resource):
                     'progress': 'done'}
 
 
+class LandingPage(Resource):
+    def __init__(self):
+        self.reqparse = reqparse.RequestParser(bundle_errors=True)
+
+        self.reqparse.add_argument('id',
+                                   type=str,
+                                   required=False,
+                                   help='No valid id provided',
+                                   location='json',
+                                   nullable=False)
+
+        self.reqparse.add_argument('title',
+                                   type=str,
+                                   required=False,
+                                   help='No valid title provided',
+                                   location='json',
+                                   nullable=False)
+
+        self.reqparse.add_argument('content',
+                                   type=str,
+                                   required=False,
+                                   help='No valid content provided',
+                                   location='json',
+                                   nullable=False)
+
+        super(LandingPage, self).__init__()
+
+    @jwt_required
+    @user_is('user')
+    def get(self):
+        landing = mongo.db.pages.find_one({'type': 'landing'})
+
+        if not landing:
+            return {'message': 'No content was found ask for support'}
+
+        return {'message': normalize(landing)}
+
+    @jwt_required
+    @user_is('admin')
+    def post(self):
+        args = self.reqparse.parse_args()
+
+        title = args.title
+        content = args.content
+
+        try:
+            mongo.db.pages.insert_one(
+                {'title': title, 'content': content,
+                 'type': 'landing', 'created': datetime.utcnow()})
+
+            return {'message': 'Page was successfully created'}
+        except Exception:
+            return {'message': 'Something went wrong try again'}, 500
+
+    @jwt_required
+    @user_is('admin')
+    def put(self):
+        args = self.reqparse.parse_args()
+
+        title = args.title
+        content = args.content
+
+        try:
+            statement = {'title': title, 'content': content,
+                         'modified': datetime.utcnow()}
+
+            data = mongo.db.pages.update_one(
+                {'_id': ObjectId(args.id)}, {'$set': statement}, upsert=True)
+
+            if data.modified_count > 0:
+                return {'message': 'Page was successfully updated'}
+            else:
+                return {'message': 'Nothing to update already uptodate'}
+        except Exception:
+            return {'message': 'Something went wrong ask for supoort'}, 500
+
+
 class Fetch(Resource):
     @jwt_required
     @user_is('admin')

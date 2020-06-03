@@ -22,6 +22,7 @@ api.add_resource(res.ChallengeTask, '/challenge/task')
 api.add_resource(res.ChallengeTaskDetail, '/challenge/task/detail')
 api.add_resource(res.ChallengeTaskProgress, '/challenge/task/progress')
 
+api.add_resource(res.LandingPage, '/landing')
 api.add_resource(res.Fetch, '/fetch')
 
 # create index on collections
