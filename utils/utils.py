@@ -12,7 +12,7 @@ def analyze(o):
         if isinstance(v, ObjectId):
             d[k] = str(v)
         elif isinstance(v, datetime):
-            d[k] = str(v)
+            d[k] = v.strftime('%d-%m-%Y')
         elif isinstance(v, bytes):
             d[k] = str(v)
         else:
