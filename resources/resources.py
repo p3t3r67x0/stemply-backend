@@ -73,6 +73,57 @@ class ConfirmToken(Resource):
             return {'message': 'Unknown error ask for support'}, 400
 
 
+class ChangePassword(Resource):
+    def __init__(self):
+        self.reqparse = reqparse.RequestParser(bundle_errors=True)
+
+        self.reqparse.add_argument('token',
+                                   type=str,
+                                   required=True,
+                                   help='No valid token provided',
+                                   location='json',
+                                   nullable=False)
+
+        self.reqparse.add_argument('password',
+                                   type=str,
+                                   required=True,
+                                   help='No valid password provided',
+                                   location='json',
+                                   nullable=False)
+
+        super(ChangePassword, self).__init__()
+
+    def put(self):
+        args = self.reqparse.parse_args()
+
+        password = bcrypt.generate_password_hash(args.password)
+
+        try:
+            email = serializer.loads(args.token, salt=salt, max_age=7200)
+        except SignatureExpired:
+            return {'message': 'Token expired ask for support'}, 401
+        except BadTimeSignature:
+            return {'message': 'Unknown error ask for support'}, 400
+        except BadSignature:
+            return {'message': 'Invalid token ask for support'}, 422
+
+        user = mongo.db.users.find_one({'email': email})
+
+        if not user:
+            return {'message': 'Account was not found try again'}, 404
+
+        if 'inactive' in user:
+            return {'message': 'Account inactive ask for support'}, 400
+
+        user = mongo.db.users.update_one(
+            {'email': email}, {'$set': {'password': password}})
+
+        if user.matched_count > 0:
+            return {'message': 'Successfully updated password'}
+        else:
+            return {'message': 'Something went wrong try again'}, 400
+
+
 class ResetPassword(Resource):
     def __init__(self):
         self.reqparse = reqparse.RequestParser(bundle_errors=True)

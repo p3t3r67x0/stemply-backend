@@ -10,6 +10,7 @@ api.add_resource(res.UserSignin, '/signin')
 api.add_resource(res.TokenRefresh, '/token/refresh')
 
 api.add_resource(res.ConfirmToken, '/confirm')
+api.add_resource(res.ChangePassword, '/change')
 api.add_resource(res.ResetPassword, '/reset')
 
 api.add_resource(res.User, '/user', '/user/<string:id>')
