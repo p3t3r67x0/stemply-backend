@@ -53,9 +53,8 @@ Create a `config.json` file in the `/` folder
 ```json
 {
   "SECRET_KEY": "YOUR_SECRET_KEY_HERE",
-  "JWT_SECRET_KEY": "YOUR_JWT_SECRET_KEY_HERE",
   "SECRET_SALT": "YOUR_SECRET_SALT_HERE",
-  "JWT_SECRET_KEY": "lksdj32jd239hJKJKHjhsd32",
+  "JWT_SECRET_KEY": "YOUR_JWT_SECRET_KEY_HERE",
   "MONGO_URI": "mongodb://127.0.0.1:27017/zackig",
   "MAIL_RECIPIENT": "MAIL_RECIPIENT_HERE",
   "MAIL_SERVER": "smtp.gmail.com",
