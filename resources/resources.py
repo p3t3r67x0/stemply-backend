@@ -700,7 +700,11 @@ class ChallengeTask(Resource):
             tasks = mongo.db.tasks.find({'cid': ObjectId(challenge['_id'])})
 
             if tasks:
-                challenge['tasks'] = normalize(tasks)
+                challenge['tasks'] = []
+
+                for task in normalize(tasks):
+                    if 'archived' not in task:
+                        challenge['tasks'].append(task)
 
             array.append(challenge)
 
@@ -744,6 +748,17 @@ class ChallengeTask(Resource):
             return {'message': 'Task was successfully added'}
         except Exception:
             return {'message': 'Something went wrong'}, 500
+
+    @jwt_required
+    @user_is('admin')
+    def delete(self, id):
+        challenge = mongo.db.tasks.update_one(
+            {'_id': ObjectId(id)}, {'$set': {'archived': True}})
+
+        if challenge.matched_count > 0:
+            return {'message': 'Task status was set to archived'}
+
+        return {'message': 'Task not found ask for support'}, 404
 
 
 class ChallengeTaskDetail(Resource):
