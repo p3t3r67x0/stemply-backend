@@ -807,12 +807,15 @@ class ChallengeTaskDetail(Resource):
     def post(self):
         args = self.reqparse.parse_args()
 
-        data = mongo.db.tasks.find_one({'_id': ObjectId(args.id)})
+        task = mongo.db.tasks.find_one({'_id': ObjectId(args.id)})
 
-        if not data:
+        if not task:
             return {'message': 'No task was found ask for support'}
 
-        return {'message': normalize(data)}
+        if 'archived' in task:
+            return {'message': 'Task is archived ask for support'}, 400
+
+        return {'message': normalize(task)}
 
     @jwt_required
     @user_is('admin')
