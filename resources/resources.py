@@ -313,12 +313,12 @@ class Challenge(Resource):
     @jwt_required
     @user_is('user')
     def get(self):
-        data = mongo.db.challenge.find({'archived': {'$exists': False}})
+        challenge = mongo.db.challenge.find({'archived': {'$exists': False}})
 
-        if not data:
+        if not challenge:
             return {'message': 'No challenge was found ask for support'}
 
-        return {'message': normalize(data)}
+        return {'message': normalize(challenge)}
 
     @jwt_required
     @user_is('admin')
@@ -406,12 +406,15 @@ class ChallengeDetail(Resource):
     def post(self):
         args = self.reqparse.parse_args()
 
-        data = mongo.db.challenge.find_one({'_id': ObjectId(args.id)})
+        challenge = mongo.db.challenge.find_one({'_id': ObjectId(args.id)})
 
-        if not data:
+        if not challenge:
             return {'message': 'No challenge was found ask for support'}
 
-        return {'message': normalize(data)}
+        if 'archived' in challenge:
+            return {'message': 'Challenge is archived ask for support'}, 400
+
+        return {'message': normalize(challenge)}
 
     @jwt_required
     @user_is('admin')
@@ -481,10 +484,12 @@ class ChallengeSubscribtion(Resource):
         if 'inactive' in user:
             return {'message': 'Account inactive ask for support'}, 400
 
+        challenges = [ObjectId(id) for id in user['challenges']]
+
         # TODO: refoctor pythonic way with not
         if 'challenges' in user:
             results = mongo.db.challenge.find(
-                {'_id': {'$in': [ObjectId(id) for id in user['challenges']]}})
+                {'_id': {'$in': challenges}, 'archived': {'$exists': False}})
 
         return {'message': normalize(results)}
 
@@ -718,6 +723,9 @@ class ChallengeTask(Resource):
 
         if not challenge:
             return {'message': 'Challenge id was not found'}
+
+        if 'archived' in challenge:
+            return {'message': 'Challenge is archived ask for support'}, 400
 
         try:
             to_date = datetime.strptime(to_date, '%d-%m-%Y')
