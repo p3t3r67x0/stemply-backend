@@ -156,6 +156,9 @@ class UserSignin(Resource):
         if not user:
             return {'message': 'Wrong password or email try again'}, 400
 
+        if 'inactive' in user:
+            return {'message': 'Account inactive ask for support'}, 400
+
         if user and bcrypt.check_password_hash(user['password'], password):
             refresh_token = create_refresh_token(identity=email)
             access_token = create_access_token(identity=email)
@@ -378,6 +381,9 @@ class ChallengeSubscribtion(Resource):
         if not user:
             return {'message': 'User was not found ask for support'}, 404
 
+        if 'inactive' in user:
+            return {'message': 'Account inactive ask for support'}, 400
+
         # TODO: refoctor pythonic way with not
         if 'challenges' in user:
             results = mongo.db.challenge.find(
@@ -428,6 +434,27 @@ class User(Resource):
                                    location='json',
                                    nullable=False)
 
+        self.reqparse.add_argument('name',
+                                   type=str,
+                                   required=False,
+                                   help='No valid name provided',
+                                   location='json',
+                                   nullable=False)
+
+        self.reqparse.add_argument('email',
+                                   type=str,
+                                   required=False,
+                                   help='No valid email provided',
+                                   location='json',
+                                   nullable=False)
+
+        self.reqparse.add_argument('roles',
+                                   type=str,
+                                   required=False,
+                                   help='No valid roles provided',
+                                   location='json',
+                                   nullable=False)
+
         super(User, self).__init__()
 
     @jwt_required
@@ -435,12 +462,64 @@ class User(Resource):
     def get(self):
         email = get_jwt_identity()
 
-        user = mongo.db.users.find_one({'email': email}, {'password': 0})
+        user = mongo.db.users.find_one(
+            {'email': email, 'inactive': {'$exists': False}}, {'password': 0})
 
         if not user:
             return {'message': 'User was not found ask for support'}, 404
 
+        if 'inactive' in user:
+            return {'message': 'Account inactive ask for support'}, 400
+
         return {'message': normalize(user)}
+
+    @jwt_required
+    @user_is('admin')
+    def put(self):
+        args = self.reqparse.parse_args()
+
+        name = args.name
+        email = args.email
+        roles = args.roles
+
+        query = {'_id': ObjectId(args.id)}
+
+        user = mongo.db.users.find_one(query)
+
+        if not user:
+            return {'message': 'User not found ask for support'}, 404
+
+        try:
+            if len(roles.split(',')) > 0:
+                roles = [r.strip() for r in roles.split(',')]
+
+            statement = {'name': name, 'email': email,
+                         'modified': datetime.utcnow(), 'roles': roles}
+
+            mongo.db.users.update_one(query, {'$set': statement})
+
+            return {'message': 'User was successfully updated'}
+        except Exception as e:
+            print(e)
+            return {'message': 'Something went wrong'}, 500
+
+    @jwt_required
+    @user_is('admin')
+    def delete(self, id):
+        email = get_jwt_identity()
+
+        user = mongo.db.users.find_one({'_id': ObjectId(id)})
+
+        if user['email'] == email:
+            return {'message': 'Can not change status on own account'}, 403
+
+        user = mongo.db.users.update_one(
+            {'_id': ObjectId(id)}, {'$set': {'inactive': True}})
+
+        if user.matched_count > 0:
+            return {'message': 'User status was set to inactive'}
+
+        return {'message': 'User not found ask for support'}, 404
 
 
 class UserList(Resource):
@@ -459,7 +538,8 @@ class UserList(Resource):
     @jwt_required
     @user_is('admin')
     def get(self):
-        users = mongo.db.users.find({}, {'password': 0})
+        users = mongo.db.users.find(
+            {'inactive': {'$exists': False}}, {'password': 0})
 
         if not users:
             return {'message': 'No users were found ask for support'}, 404
