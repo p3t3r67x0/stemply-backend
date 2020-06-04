@@ -17,7 +17,7 @@ from bson.objectid import ObjectId
 from durations import Duration
 
 # custom imports
-from utils.mails import send_confirm_mail
+from utils.mails import send_confirm_mail, send_reset_password_mail
 from utils.decorators import user_is
 from utils.utils import normalize
 from app import app, bcrypt, mongo
@@ -71,6 +71,41 @@ class ConfirmToken(Resource):
             return {'message': 'Successfully activated account'}
         else:
             return {'message': 'Unknown error ask for support'}, 400
+
+
+class ResetPassword(Resource):
+    def __init__(self):
+        self.reqparse = reqparse.RequestParser(bundle_errors=True)
+
+        self.reqparse.add_argument('email',
+                                   type=str,
+                                   required=True,
+                                   help='No valid email provided',
+                                   location='json',
+                                   nullable=False)
+
+        super(ResetPassword, self).__init__()
+
+    def post(self):
+        args = self.reqparse.parse_args()
+
+        try:
+            user = mongo.db.users.find_one({'email': args.email})
+
+            if not user:
+                return {'message': 'Account was not found try again'}, 404
+
+            if 'inactive' in user:
+                return {'message': 'Account inactive ask for support'}, 400
+
+            mail = send_reset_password_mail(user['name'], args.email)
+
+            if not mail:
+                return {'message': 'Error please try again'}, 400
+
+            return {'message': 'Please check your inbox'}
+        except Exception:
+            return {'message': 'Something went wrong try again'}, 400
 
 
 class UserSignup(Resource):
