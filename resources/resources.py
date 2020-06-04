@@ -313,7 +313,7 @@ class Challenge(Resource):
     @jwt_required
     @user_is('user')
     def get(self):
-        data = mongo.db.challenge.find()
+        data = mongo.db.challenge.find({'archived': {'$exists': False}})
 
         if not data:
             return {'message': 'No challenge was found ask for support'}
@@ -347,6 +347,17 @@ class Challenge(Resource):
             return {'message': 'Challenge was successfully added'}
         except Exception:
             return {'message': 'Something went wrong'}, 500
+
+    @jwt_required
+    @user_is('admin')
+    def delete(self, id):
+        challenge = mongo.db.challenge.update_one(
+            {'_id': ObjectId(id)}, {'$set': {'archived': True}})
+
+        if challenge.matched_count > 0:
+            return {'message': 'Challenge status was set to archived'}
+
+        return {'message': 'Challenge not found ask for support'}, 404
 
 
 class ChallengeDetail(Resource):
@@ -677,20 +688,21 @@ class ChallengeTask(Resource):
     @jwt_required
     @user_is('user')
     def get(self):
-        challenges = []
+        challenges = mongo.db.challenge.find({'archived': {'$exists': False}})
+        array = []
 
-        for challenge in mongo.db.challenge.find():
+        for challenge in challenges:
             tasks = mongo.db.tasks.find({'cid': ObjectId(challenge['_id'])})
 
             if tasks:
                 challenge['tasks'] = normalize(tasks)
 
-            challenges.append(challenge)
+            array.append(challenge)
 
-        if not challenges:
+        if not array:
             return {'message': 'No challenges were found create one'}, 404
 
-        return {'message': normalize(challenges)}
+        return {'message': normalize(array)}
 
     @jwt_required
     @user_is('admin')
