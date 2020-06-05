@@ -944,7 +944,7 @@ class LandingPage(Resource):
         landing = mongo.db.pages.find_one({'type': 'landing'})
 
         if not landing:
-            return {'message': 'No content was found ask for support'}, 400
+            return {'message': 'Content was not found ask for support'}, 400
 
         return {'message': normalize(landing)}
 
@@ -986,6 +986,104 @@ class LandingPage(Resource):
                 return {'message': 'Nothing to update already uptodate'}
         except Exception:
             return {'message': 'Something went wrong ask for supoort'}, 500
+
+
+class MailTemplate(Resource):
+    def __init__(self):
+        self.reqparse = reqparse.RequestParser(bundle_errors=True)
+
+        self.reqparse.add_argument('id',
+                                   type=str,
+                                   required=False,
+                                   help='No valid id provided',
+                                   location='json',
+                                   nullable=False)
+
+        self.reqparse.add_argument('type',
+                                   type=str,
+                                   required=False,
+                                   help='No valid type provided',
+                                   location='json',
+                                   nullable=False)
+
+        self.reqparse.add_argument('subject',
+                                   type=str,
+                                   required=False,
+                                   help='No valid subject provided',
+                                   location='json',
+                                   nullable=False)
+
+        self.reqparse.add_argument('message',
+                                   type=str,
+                                   required=False,
+                                   help='No valid message provided',
+                                   location='json',
+                                   nullable=False)
+
+        super(MailTemplate, self).__init__()
+
+    @jwt_required
+    @user_is('admin')
+    def get(self, id):
+        template = mongo.db.templates.find_one({'_id': id})
+
+        if not template:
+            return {'message': 'Template not found ask for support'}, 404
+
+        return {'message': normalize(template)}
+
+    @jwt_required
+    @user_is('admin')
+    def post(self):
+        args = self.reqparse.parse_args()
+
+        type = args.type
+        subject = args.subject
+        message = args.message
+
+        try:
+            template = mongo.db.templates.insert_one(
+                {'subject': subject, 'message': message,
+                 'type': type, 'created': datetime.utcnow()})
+
+            return {'message': 'Template was successfully created',
+                    '_id': str(template.inserted_id)}
+        except Exception:
+            return {'message': 'Something went wrong try again'}, 500
+
+    @jwt_required
+    @user_is('admin')
+    def put(self):
+        args = self.reqparse.parse_args()
+
+        subject = args.subject
+        message = args.message
+
+        try:
+            statement = {'subject': subject, 'message': message,
+                         'modified': datetime.utcnow()}
+
+            template = mongo.db.templates.update_one(
+                {'_id': ObjectId(args.id)}, {'$set': statement}, upsert=True)
+
+            if template.modified_count > 0:
+                return {'message': 'Template was successfully updated'}
+            else:
+                return {'message': 'Nothing to update already uptodate'}
+        except Exception:
+            return {'message': 'Something went wrong ask for supoort'}, 500
+
+
+class MailTemplateList(Resource):
+    @jwt_required
+    @user_is('admin')
+    def get(self):
+        templates = mongo.db.templates.find()
+
+        if not templates:
+            return {'message': 'No template was found create one'}, 404
+
+        return {'message': normalize(templates)}
 
 
 class UserExport(Resource):
