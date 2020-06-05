@@ -210,7 +210,8 @@ class UserSignup(Resource):
                 return {'message': 'Signup error please try again'}, 400
 
             return {'message': 'Please check your mail inbox'}
-        except Exception:
+        except Exception as e:
+            print(e)
             return {'message': 'Account already exists try to login'}, 409
 
 

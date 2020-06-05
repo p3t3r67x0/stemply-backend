@@ -64,7 +64,9 @@ Create a `config.json` file in the `/` folder
   "MAIL_USE_TLS": false,
   "MAIL_USE_SSL": true,
   "PROPAGATE_EXCEPTIONS": true,
-  "APP_URL": "YOUR_APP_URL_HERE"
+  "APP_URL": "YOUR_APP_URL_HERE",
+  "RESET_PASSWORD_BODY": "Hello %NAME%,\n\nwith this mail we send you the link to reset your password for your Education account.\n\n%LINK%\n\nBest regards\nEducation Team",
+  "CONFIRM_MAIL_BODY": "Hello %NAME%,\n\nwith this mail we send you the confirmation link for your Education account.\n\n%LINK%\n\nBest regards\nEducation Team"
 }
 ```
 
