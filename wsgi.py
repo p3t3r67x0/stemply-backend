@@ -15,6 +15,7 @@ api.add_resource(res.ResetPassword, '/reset')
 
 api.add_resource(res.User, '/user', '/user/<string:id>')
 api.add_resource(res.UserList, '/user/list')
+api.add_resource(res.UserAvatar, '/user/avatar/<string:id>')
 api.add_resource(res.UserExport, '/user/export')
 
 api.add_resource(res.Challenge, '/challenge', '/challenge/<string:id>')
@@ -37,4 +38,5 @@ mongo.db.users.create_index([('email', 1)], unique=True)
 
 
 if __name__ == '__main__':
+    # print(app.url_map)
     app.run(debug=True)

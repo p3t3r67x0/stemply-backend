@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 
+import os
 import re
 import requests
 import pytz
 import csv
 import io
 
-from flask import Response
+from flask import Response, request
 from flask_restful import Resource, reqparse
 from flask_jwt_extended import (create_refresh_token, jwt_required,
                                 create_access_token, get_jwt_identity,
@@ -18,6 +19,8 @@ from itsdangerous import (URLSafeTimedSerializer,
 from datetime import datetime
 from bson.objectid import ObjectId
 from durations import Duration
+from pathlib import Path
+from uuid import uuid4
 
 # custom imports
 from utils.mails import send_confirm_mail, send_reset_password_mail
@@ -608,6 +611,58 @@ class User(Resource):
         except Exception as e:
             print(e)
             return {'message': 'Something went wrong'}, 500
+
+    @jwt_required
+    @user_is('admin')
+    def delete(self, id):
+        email = get_jwt_identity()
+
+        user = mongo.db.users.find_one({'_id': ObjectId(id)})
+
+        if user['email'] == email:
+            return {'message': 'Can not change status on own account'}, 403
+
+        user = mongo.db.users.update_one(
+            {'_id': ObjectId(id)}, {'$set': {'inactive': True}})
+
+        if user.matched_count > 0:
+            return {'message': 'User status was set to inactive'}
+
+        return {'message': 'User not found ask for support'}, 404
+
+
+class UserAvatar(Resource):
+    @jwt_required
+    @user_is('user')
+    def post(self, id):
+        avatar = '{}.png'.format(str(uuid4()))
+
+        try:
+            request.files['file'].save(os.path.join(
+                app.root_path, 'static', avatar))
+        except Exception as e:
+            print(e)
+            return {'message': 'Error uploading avatar try again'}, 400
+
+        file = Path(os.path.join(app.root_path, 'static', avatar))
+
+        if not file.exists():
+            return {'message': 'Error uploading avatar try again'}, 400
+
+        query = {'_id': ObjectId(id)}
+        user = mongo.db.users.find_one(query)
+
+        if not user:
+            return {'message': 'User not found ask for support'}, 404
+
+        statement = {'avatar': avatar, 'modified': datetime.utcnow()}
+
+        user = mongo.db.users.update_one(query, {'$set': statement})
+
+        if user.modified_count > 0:
+            return {'message': 'Avatar was successfully added'}
+        else:
+            return {'message': 'Oooops something went wrong'}, 400
 
     @jwt_required
     @user_is('admin')
