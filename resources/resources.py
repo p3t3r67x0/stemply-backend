@@ -3,7 +3,10 @@
 import re
 import requests
 import pytz
+import csv
+import io
 
+from flask import Response
 from flask_restful import Resource, reqparse
 from flask_jwt_extended import (create_refresh_token, jwt_required,
                                 create_access_token, get_jwt_identity,
@@ -941,7 +944,7 @@ class LandingPage(Resource):
         landing = mongo.db.pages.find_one({'type': 'landing'})
 
         if not landing:
-            return {'message': 'No content was found ask for support'}
+            return {'message': 'No content was found ask for support'}, 400
 
         return {'message': normalize(landing)}
 
@@ -983,6 +986,42 @@ class LandingPage(Resource):
                 return {'message': 'Nothing to update already uptodate'}
         except Exception:
             return {'message': 'Something went wrong ask for supoort'}, 500
+
+
+class UserExport(Resource):
+    @jwt_required
+    @user_is('user')
+    def get(self):
+        users = mongo.db.users.find(
+            {}, {'_id': 0, 'name': 1, 'inactive': 1, 'email': 2})
+
+        if not users:
+            return {'message': 'No users were found ask for support'}, 400
+
+        dest = io.StringIO()
+        writer = csv.writer(dest, quoting=csv.QUOTE_ALL)
+        writer.writerow(['email', 'name', 'status'])
+
+        for user in normalize(users):
+            items = ['', '', '']
+
+            for key, value in user.items():
+                if key == 'name':
+                    items[1] = value
+                if key == 'email':
+                    items[0] = value
+                if key == 'inactive':
+                    items[2] = 'inactive'
+
+            if items[2] == '':
+                items[2] = 'active'
+
+            writer.writerow(items)
+
+        content = {
+            'Content-Disposition': 'attachment; filename=export.csv'}
+
+        return Response(dest.getvalue(), mimetype='text/csv', headers=content)
 
 
 class Fetch(Resource):

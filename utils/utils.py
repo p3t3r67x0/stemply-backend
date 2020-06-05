@@ -15,6 +15,8 @@ def analyze(o):
             d[k] = v.strftime('%d-%m-%Y')
         elif isinstance(v, bytes):
             d[k] = str(v)
+        elif isinstance(v, bool):
+            d[k] = str(v)
         else:
             d[k] = v
 

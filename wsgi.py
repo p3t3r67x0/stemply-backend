@@ -15,6 +15,7 @@ api.add_resource(res.ResetPassword, '/reset')
 
 api.add_resource(res.User, '/user', '/user/<string:id>')
 api.add_resource(res.UserList, '/user/list')
+api.add_resource(res.UserExport, '/user/export')
 
 api.add_resource(res.Challenge, '/challenge', '/challenge/<string:id>')
 api.add_resource(res.ChallengeDetail, '/challenge/detail')
