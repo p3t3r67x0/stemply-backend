@@ -24,8 +24,8 @@ from uuid import uuid4
 
 # custom imports
 from utils.mails import send_confirm_mail, send_reset_password_mail
+from utils.utils import normalize, logging, browser
 from utils.decorators import user_is
-from utils.utils import normalize
 from app import app, bcrypt, mongo
 
 
@@ -306,6 +306,8 @@ class UserSignin(Resource):
         if user and bcrypt.check_password_hash(user['password'], password):
             refresh_token = create_refresh_token(identity=email)
             access_token = create_access_token(identity=email)
+
+            mongo.db.logs.insert_one(logging(user['_id'], request, 'signin'))
 
             try:
                 avatar = user['avatar']
@@ -721,7 +723,7 @@ class UserAvatar(Resource):
             return {
                 'message': 'Avatar was successfully uploaded',
                 'avatar': avatar
-                }
+            }
         else:
             return {'message': 'Oooops something went wrong'}, 400
 
@@ -1201,6 +1203,38 @@ class MailTemplateList(Resource):
             return {'message': 'No template was found create one'}, 404
 
         return {'message': normalize(templates)}
+
+
+class UserLastseen(Resource):
+    @jwt_required
+    @user_is('user')
+    def get(self, id):
+        email = get_jwt_identity()
+
+        user = mongo.db.users.find_one({'_id': ObjectId(id)})
+
+        if not user:
+            return {'message': 'Not authorized request reported'}, 403
+
+        if user['email'] != email:
+            return {'message': 'Not authorized request reported'}, 403
+
+        logs = mongo.db.logs.find(
+            {'uid': ObjectId(id), 'action': 'signin'}).sort([('created', -1)])
+
+        if not logs:
+            return {'message': 'No logs were found fresh page'}, 404
+
+        array = []
+
+        for log in normalize(logs, 'datetime'):
+            array.append({
+                'browser': browser(log['useragent']),
+                'datetime': log['created'],
+                'address': log['address']
+            })
+
+        return {'message': array}
 
 
 class UserExport(Resource):

@@ -16,6 +16,7 @@ api.add_resource(res.ResetPassword, '/reset')
 api.add_resource(res.User, '/user', '/user/<string:id>')
 api.add_resource(res.UserList, '/user/list')
 api.add_resource(res.UserAvatar, '/user/avatar/<string:id>')
+api.add_resource(res.UserLastseen, '/user/lastseen/<string:id>')
 api.add_resource(res.UserChangePassword, '/user/change/<string:id>')
 api.add_resource(res.UserExport, '/user/export')
 
