@@ -55,7 +55,7 @@ errors = {
 }
 
 
-app = Flask(__name__, static_folder=None)
+app = Flask(__name__)
 app.config.from_json('config.json')
 api = Api(app, errors=errors, prefix='/api/v1')
 jwt = JWTManager(app)

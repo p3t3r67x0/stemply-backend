@@ -256,12 +256,19 @@ class UserSignin(Resource):
             refresh_token = create_refresh_token(identity=email)
             access_token = create_access_token(identity=email)
 
+            try:
+                avatar = user['avatar']
+            except Exception:
+                avatar = None
+
             return {
                 'message': 'Logged in as {}'.format(email),
                 'refresh_token': refresh_token,
                 'access_token': access_token,
-                'user_roles': user['roles'],
-                'user_id': str(user['_id'])
+                'roles': user['roles'],
+                'id': str(user['_id']),
+                'name': user['name'],
+                'avatar': avatar
             }
         else:
             return {'message': 'Wrong password or email try again'}, 400
@@ -660,7 +667,10 @@ class UserAvatar(Resource):
         user = mongo.db.users.update_one(query, {'$set': statement})
 
         if user.modified_count > 0:
-            return {'message': 'Avatar was successfully added'}
+            return {
+                'message': 'Avatar was successfully uploaded',
+                'avatar': avatar
+                }
         else:
             return {'message': 'Oooops something went wrong'}, 400
 
