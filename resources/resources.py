@@ -130,6 +130,57 @@ class ChangePassword(Resource):
             return {'message': 'Something went wrong try again'}, 400
 
 
+class UserChangePassword(Resource):
+    def __init__(self):
+        self.reqparse = reqparse.RequestParser(bundle_errors=True)
+
+        self.reqparse.add_argument('confirm',
+                                   type=str,
+                                   required=True,
+                                   help='No valid confirm provided',
+                                   location='json',
+                                   nullable=False)
+
+        self.reqparse.add_argument('password',
+                                   type=str,
+                                   required=True,
+                                   help='No valid password provided',
+                                   location='json',
+                                   nullable=False)
+
+        super(UserChangePassword, self).__init__()
+
+    @jwt_required
+    @user_is('user')
+    def put(self, id):
+        email = get_jwt_identity()
+        args = self.reqparse.parse_args()
+
+        confirm = args.confirm
+        password = args.password
+
+        if confirm != password:
+            return {'message': 'Passwords does not match try again'}, 401
+
+        password = bcrypt.generate_password_hash(args.password)
+
+        user = mongo.db.users.find_one({'_id': ObjectId(id)})
+
+        if user['email'] != email:
+            return {'message': 'Not authorized request reported'}, 403
+
+        if 'inactive' in user:
+            return {'message': 'Account inactive ask for support'}, 400
+
+        user = mongo.db.users.update_one(
+            {'_id': ObjectId(id)}, {'$set': {'password': password}})
+
+        if user.matched_count > 0:
+            return {'message': 'Successfully updated password'}
+        else:
+            return {'message': 'Something went wrong try again'}, 400
+
+
 class ResetPassword(Resource):
     def __init__(self):
         self.reqparse = reqparse.RequestParser(bundle_errors=True)
