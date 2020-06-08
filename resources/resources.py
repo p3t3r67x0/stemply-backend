@@ -1373,17 +1373,19 @@ class UserExport(Resource):
     @user_is('user')
     def get(self):
         users = mongo.db.users.find(
-            {}, {'_id': 0, 'name': 1, 'inactive': 1, 'email': 2})
+            {}, {'_id': 0, 'name': 1, 'inactive': 1, 'email': 1,
+                 'challenges': 1, 'progress': 1})
 
         if not users:
             return {'message': 'No users were found ask for support'}, 400
 
         dest = io.StringIO()
         writer = csv.writer(dest, quoting=csv.QUOTE_ALL)
-        writer.writerow(['email', 'name', 'status'])
+        writer.writerow(['email', 'full name', 'user status',
+                         'subscribtion', 'tasks done'])
 
         for user in normalize(users):
-            items = ['', '', '']
+            items = ['', '', '', '', '']
 
             for key, value in user.items():
                 if key == 'name':
@@ -1392,6 +1394,10 @@ class UserExport(Resource):
                     items[0] = value
                 if key == 'inactive':
                     items[2] = 'inactive'
+                if key == 'progress':
+                    items[4] = ','.join([c['tid'] for c in value])
+                if key == 'challenges':
+                    items[3] = ','.join([c for c in value])
 
             if items[2] == '':
                 items[2] = 'active'
