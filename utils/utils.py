@@ -40,9 +40,15 @@ def normalize(objects, format='date'):
 
 
 def logging(id, req, action):
-    address = req.remote_addr
     useragent = str(req.user_agent)
     date = datetime.utcnow()
+
+    if 'X-Forwarded-For' in req.headers:
+        proxy_data = req.headers['X-Forwarded-For']
+        ip_list = proxy_data.split(',')
+        address = ip_list[0]
+    else:
+        address = req.remote_addr
 
     statement = {'uid': id, 'useragent': useragent,
                  'created': date, 'address': address, 'action': action}
