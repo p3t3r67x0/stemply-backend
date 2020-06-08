@@ -37,6 +37,7 @@ api.add_resource(res.MailTemplateList, '/template/list')
 api.add_resource(res.LandingPage, '/landing')
 api.add_resource(res.Fetch, '/fetch')
 
+api.add_resource(res.RequestChallenge, '/challenge/request')
 # create index on collections
 mongo.db.users.create_index([('email', 1)], unique=True)
 
