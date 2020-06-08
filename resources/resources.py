@@ -24,7 +24,7 @@ from uuid import uuid4
 
 # custom imports
 from utils.mails import send_confirm_mail, send_reset_password_mail
-from utils.utils import normalize, logging, browser
+from utils.utils import normalize, logging, browser, non_empty_string
 from utils.decorators import user_is
 from app import app, bcrypt, mongo
 
@@ -689,6 +689,93 @@ class User(Resource):
             return {'message': 'User status was set to inactive'}
 
         return {'message': 'User not found ask for support'}, 404
+
+
+class UserProfile(Resource):
+    def __init__(self):
+        self.reqparse = reqparse.RequestParser(bundle_errors=True)
+
+        self.reqparse.add_argument('name',
+                                   type=non_empty_string,
+                                   help='No valid name provided',
+                                   location='json',
+                                   required=True,
+                                   nullable=False)
+
+        self.reqparse.add_argument('username',
+                                   type=str,
+                                   help='No valid username provided',
+                                   location='json',
+                                   required=False,
+                                   nullable=False)
+
+        self.reqparse.add_argument('email',
+                                   type=non_empty_string,
+                                   help='No valid email provided',
+                                   location='json',
+                                   required=True,
+                                   nullable=False)
+
+        self.reqparse.add_argument('location',
+                                   type=str,
+                                   help='No valid location provided',
+                                   location='json',
+                                   required=False,
+                                   nullable=False)
+
+        self.reqparse.add_argument('website',
+                                   type=str,
+                                   help='No valid website provided',
+                                   location='json',
+                                   required=False,
+                                   nullable=False)
+
+        self.reqparse.add_argument('phone',
+                                   type=str,
+                                   help='No valid phone provided',
+                                   location='json',
+                                   required=False,
+                                   nullable=False)
+
+        self.reqparse.add_argument('bio',
+                                   type=str,
+                                   help='No valid bio provided',
+                                   location='json',
+                                   required=False,
+                                   nullable=False)
+
+        super(UserProfile, self).__init__()
+
+    @jwt_required
+    @user_is('user')
+    def put(self, id):
+        args = self.reqparse.parse_args()
+
+        name = args.name
+        email = args.email
+        username = args.username
+        location = args.location
+        website = args.website
+        phone = args.phone
+        bio = args.bio
+
+        query = {'_id': ObjectId(id)}
+
+        user = mongo.db.users.find_one(query)
+
+        if not user:
+            return {'message': 'User not found ask for support'}, 404
+
+        statement = {'name': name, 'email': email, 'username': username,
+                     'website': website, 'location': location, 'bio': bio,
+                     'phone': phone, 'modified': datetime.utcnow()}
+
+        user = mongo.db.users.update_one(query, {'$set': statement})
+
+        if user.matched_count > 0:
+            return {'message': 'User was successfully updated'}
+        else:
+            return {'message': 'Nothing to update already uptodate'}
 
 
 class UserAvatar(Resource):

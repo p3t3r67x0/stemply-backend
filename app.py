@@ -24,10 +24,6 @@ errors = {
         'status': 404,
         'message': 'Requested resource was not found on server'
     },
-    'BadRequest': {
-        'status': 400,
-        'message': 'Bad request the error has been reported'
-    },
     'BadGateway': {
         'status': 502,
         'message': 'Bad gateway application is not reachable'
