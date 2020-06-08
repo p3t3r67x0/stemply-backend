@@ -592,6 +592,50 @@ class ChallengeSubscribtion(Resource):
             return {'message': 'Nothing to update already uptodate'}
 
 
+class UserChallenge(Resource):
+    @jwt_required
+    @user_is('user')
+    def get(self):
+        email = get_jwt_identity()
+
+        user = mongo.db.users.find_one({'email': email})
+
+        if not user:
+            return {'message': 'Account not found ask for support'}, 404
+
+        if 'inactive' in user:
+            return {'message': 'Account inactive ask for support'}, 400
+
+        if 'challenges' not in user:
+            return {'message': 'Account not subscribed to any challenge'}, 404
+
+        for cid in user['challenges']:
+            challenges = mongo.db.challenge.find(
+                {'_id': ObjectId(cid), 'archived': {'$exists': False}})
+
+        array = []
+
+        for challenge in challenges:
+            query = {'cid': ObjectId(challenge['_id']),
+                     'archived': {'$exists': False}}
+            tasks = mongo.db.tasks.find(query)
+
+            if tasks:
+                challenge['tasks'] = []
+
+                for task in normalize(tasks):
+                    if 'progress' in user:
+                        for progress in user['progress']:
+                            if task['_id'] == progress['tid']:
+                                task['progress'] = 'done'
+
+                    challenge['tasks'].append(task)
+
+            array.append(challenge)
+
+        return {'message': normalize(array)}
+
+
 class User(Resource):
     def __init__(self):
         self.reqparse = reqparse.RequestParser(bundle_errors=True)
