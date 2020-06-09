@@ -1472,8 +1472,6 @@ class Fetch(Resource):
         return {'added': i, 'updated': j}
 
 
-
-
 class RequestChallenge(Resource):
     def __init__(self):
         self.reqparse = reqparse.RequestParser(bundle_errors=True)
@@ -1487,10 +1485,10 @@ class RequestChallenge(Resource):
 
         super(RequestChallenge, self).__init__()
 
-
     @jwt_required
     @user_is('admin')
     def get(self):
+        # TODO: add a new endpoint RequestChallengeList dont use request args
         args = request.args
 
         if 'showall' in args:
@@ -1498,85 +1496,89 @@ class RequestChallenge(Resource):
                 requests = mongo.db.challengerequests.find()
                 return {'message': normalize(requests)}
 
-        requests = mongo.db.challengerequests.find_one({
-        'accepted': {'$eq': False}
-        })
+        requests = mongo.db.challengerequests.find_one(
+            {'accepted': {'$eq': False}})
+
         return {'message': normalize(requests)}
-
-    @jwt_required
-    @user_is('admin')
-    def put(self):
-        args = request.args
-        email = get_jwt_identity()
-        user = mongo.db.users.find_one({'email': email})
-        args = self.reqparse.parse_args()
-        try:
-            ObjectId(args.id)
-        except Exception:
-            return {'message': 'The provided ID is not valid'}, 400
-        challengerequest = mongo.db.challengerequests.find_one({
-        '_id': ObjectId(args.id)
-        })
-        if not challengerequest:
-            return {'message': 'This request doesn\'t exist'}, 404
-
-        mongo.db.challengerequests.update_one({'_id': args.id}, {
-        '$set': {
-            'accepted': True,
-            'acceptedts': datetime.utcnow(),
-            'acceptedby': user['_id']
-        }
-        })
-        requser = mongo.db.users.update_one(
-            {'_id': ObjectId(challengerequest['uid'])}, {
-            '$addToSet': {'challenges': ObjectId(challengerequest['cid'])}
-            }, upsert=True)
-
-        if requser.modified_count > 0:
-            return {'message': 'User subscribed to requested challenge'}
-        else:
-            return {'message': 'Error'}, 500
 
     @jwt_required
     @user_is('user')
     def post(self):
-        email = get_jwt_identity()
-        user = mongo.db.users.find_one({'email': email})
         args = self.reqparse.parse_args()
+        email = get_jwt_identity()
+
+        user = mongo.db.users.find_one({'email': email})
+
         try:
             ObjectId(args.id)
         except Exception:
-            return {'message': 'The provided ID is not valid'}, 400
+            return {'message': 'The provided id is not valid'}, 400
 
-        challenge = mongo.db.challenge.find_one({'_id': ObjectId(args.id)})
         if not user:
             return {'message': 'Account not found ask for support'}, 404
 
         if 'inactive' in user:
             return {'message': 'Account inactive ask for support'}, 400
 
+        challenge = mongo.db.challenge.find_one({'_id': ObjectId(args.id)})
+
         if not challenge:
             return {'message': 'This challenge doesn\'t exist'}, 404
 
         if str(args.id) in user['challenges']:
             return {
-            'message': 'You are already subscribed to this challenge'
+                'message': 'You are already subscribed to this challenge'
             }, 400
 
-        if mongo.db.challengerequests.find_one({
-        'uid': ObjectId(user['_id']),
-        'cid': ObjectId(args.id)
-        }):
+        challengerequest = mongo.db.challengerequests.find_one(
+            {'uid': ObjectId(user['_id']), 'cid': ObjectId(args.id)})
+
+        if challengerequest:
             return {
-            'message': 'You already requested access to this challenge'
+                'message': 'You already requested access to this challenge'
             }, 400
 
-        mongo.db.challengerequests.insert_one({
-        'uid': ObjectId(user['_id']),
-        'cid': ObjectId(args.id),
-        'ts': datetime.utcnow(),
-        'accepted': False
+        statement = {'uid': ObjectId(user['_id']), 'cid': ObjectId(
+            args.id), 'created': datetime.utcnow(), 'accepted': False}
 
-        })
+        mongo.db.challengerequests.insert_one(statement)
 
         return {'message': normalize({})}
+
+    @jwt_required
+    @user_is('admin')
+    def put(self):
+        args = self.reqparse.parse_args()
+        email = get_jwt_identity()
+
+        args = request.args
+
+        user = mongo.db.users.find_one({'email': email})
+
+        try:
+            ObjectId(args.id)
+        except Exception:
+            return {'message': 'The provided id is not valid'}, 400
+
+        challengerequest = mongo.db.challengerequests.find_one(
+            {'_id': ObjectId(args.id)})
+
+        if not challengerequest:
+            return {'message': 'Request doesn\'t exist ask for support'}, 404
+
+        statement = {'accepted': True, 'acceptedby': user['_id'],
+                     'modified': datetime.utcnow()}
+
+        mongo.db.challengerequests.update_one(
+            {'_id': args.id}, {'$set': statement})
+
+        statement = {'$addToSet': {
+            'challenges': ObjectId(challengerequest['cid'])}}
+
+        user = mongo.db.users.update_one(
+            {'_id': ObjectId(challengerequest['uid'])}, statement, upsert=True)
+
+        if user.modified_count > 0:
+            return {'message': 'User subscribed to requested challenge'}
+        else:
+            return {'message': 'Nothing to update already uptodate'}, 400
