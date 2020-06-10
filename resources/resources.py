@@ -1347,6 +1347,47 @@ class MailTemplate(Resource):
             return {'message': 'Something went wrong ask for supoort'}, 500
 
 
+class ChallengeExport(Resource):
+    @jwt_required
+    @user_is('admin')
+    def get(self):
+        challenges = mongo.db.challenge.find(
+            {}, {'_id': 1, 'title': 1, 'archived': 1, 'from': 1,
+                 'to': 1, 'duration': 1})
+
+        if not challenges:
+            return {'message': 'No challenges found ask for support'}, 400
+
+        dest = io.StringIO()
+        writer = csv.writer(dest, quoting=csv.QUOTE_ALL)
+        writer.writerow(['challenge id', 'challenge title', 'archived',
+                         'valid from', 'valid to', 'duration'])
+
+        for user in normalize(challenges):
+            items = ['', '', '', '', '', '']
+
+            for key, value in user.items():
+                if key == '_id':
+                    items[0] = value
+                if key == 'title':
+                    items[1] = value
+                if key == 'archived':
+                    items[2] = value
+                if key == 'from':
+                    items[3] = value
+                if key == 'to':
+                    items[4] = value
+                if key == 'duration':
+                    items[5] = value
+
+            writer.writerow(items)
+
+        content = {
+            'Content-Disposition': 'attachment; filename=export.csv'}
+
+        return Response(dest.getvalue(), mimetype='text/csv', headers=content)
+
+
 class MailTemplateList(Resource):
     @jwt_required
     @user_is('admin')
@@ -1393,7 +1434,7 @@ class UserLastseen(Resource):
 
 class UserExport(Resource):
     @jwt_required
-    @user_is('user')
+    @user_is('admin')
     def get(self):
         users = mongo.db.users.find(
             {}, {'_id': 0, 'name': 1, 'inactive': 1, 'email': 1,
@@ -1607,13 +1648,24 @@ class RequestChallenge(Resource):
             return {'message': 'Nothing to update already uptodate'}, 400
 
 
-
 class UserRequestedChallenges(Resource):
     @jwt_required
     @user_is('user')
     def get(self):
         email = get_jwt_identity()
+
         user = mongo.db.users.find_one({'email': email})
-        subscriptions = mongo.db.subscriptions.find({'uid': ObjectId(user['_id'])})
+
+        if not user:
+            return {'message': 'Account not found ask for support'}, 404
+
+        if 'inactive' in user:
+            return {'message': 'Account inactive ask for support'}, 400
+
+        subscriptions = mongo.db.subscriptions.find(
+            {'uid': ObjectId(user['_id'])})
+
+        if not subscriptions:
+            return {'message': 'No challenge subscriptions found'}, 404
 
         return {'message': normalize(subscriptions)}

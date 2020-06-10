@@ -31,6 +31,7 @@ api.add_resource(res.ChallengeTask, '/challenge/task',
                  '/challenge/task/<string:id>')
 api.add_resource(res.ChallengeTaskDetail, '/challenge/task/detail')
 api.add_resource(res.ChallengeTaskProgress, '/challenge/task/progress')
+api.add_resource(res.ChallengeExport, '/challenge/export')
 
 api.add_resource(res.MailTemplate, '/template', '/template/<string:id>')
 api.add_resource(res.MailTemplateList, '/template/list')
