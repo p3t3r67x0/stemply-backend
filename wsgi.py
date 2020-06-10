@@ -36,6 +36,7 @@ api.add_resource(res.MailTemplate, '/template', '/template/<string:id>')
 api.add_resource(res.MailTemplateList, '/template/list')
 
 api.add_resource(res.RequestChallenge, '/challenge/request')
+api.add_resource(res.UserRequestedChallenges, '/challenge/requests')
 
 api.add_resource(res.LandingPage, '/landing')
 api.add_resource(res.Fetch, '/fetch')

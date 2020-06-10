@@ -1516,10 +1516,10 @@ class RequestChallenge(Resource):
 
         if 'showall' in args:
             if args['showall'] == 'true':
-                requests = mongo.db.challengerequests.find()
+                requests = mongo.db.subscriptions.find()
                 return {'message': normalize(requests)}
 
-        requests = mongo.db.challengerequests.find_one(
+        requests = mongo.db.subscriptions.find_one(
             {'accepted': {'$eq': False}})
 
         return {'message': normalize(requests)}
@@ -1553,7 +1553,7 @@ class RequestChallenge(Resource):
                 'message': 'You are already subscribed to this challenge'
             }, 400
 
-        challengerequest = mongo.db.challengerequests.find_one(
+        challengerequest = mongo.db.subscriptions.find_one(
             {'uid': ObjectId(user['_id']), 'cid': ObjectId(args.id)})
 
         if challengerequest:
@@ -1564,7 +1564,7 @@ class RequestChallenge(Resource):
         statement = {'uid': ObjectId(user['_id']), 'cid': ObjectId(
             args.id), 'created': datetime.utcnow(), 'accepted': False}
 
-        mongo.db.challengerequests.insert_one(statement)
+        mongo.db.subscriptions.insert_one(statement)
 
         return {'message': normalize({})}
 
@@ -1583,7 +1583,7 @@ class RequestChallenge(Resource):
         except Exception:
             return {'message': 'The provided id is not valid'}, 400
 
-        challengerequest = mongo.db.challengerequests.find_one(
+        challengerequest = mongo.db.subscriptions.find_one(
             {'_id': ObjectId(args.id)})
 
         if not challengerequest:
@@ -1592,7 +1592,7 @@ class RequestChallenge(Resource):
         statement = {'accepted': True, 'acceptedby': user['_id'],
                      'modified': datetime.utcnow()}
 
-        mongo.db.challengerequests.update_one(
+        mongo.db.subscriptions.update_one(
             {'_id': args.id}, {'$set': statement})
 
         statement = {'$addToSet': {
@@ -1605,3 +1605,15 @@ class RequestChallenge(Resource):
             return {'message': 'User subscribed to requested challenge'}
         else:
             return {'message': 'Nothing to update already uptodate'}, 400
+
+
+
+class UserRequestedChallenges(Resource):
+    @jwt_required
+    @user_is('user')
+    def get(self):
+        email = get_jwt_identity()
+        user = mongo.db.users.find_one({'email': email})
+        subscriptions = mongo.db.subscriptions.find({'uid': ObjectId(user['_id'])})
+
+        return {'message': normalize(subscriptions)}
