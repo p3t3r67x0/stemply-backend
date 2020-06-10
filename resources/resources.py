@@ -636,6 +636,29 @@ class UserChallenge(Resource):
         return {'message': normalize(array)}
 
 
+class UserDeleteAccount(Resource):
+    @jwt_required
+    @user_is('user')
+    def post(self):
+        email = get_jwt_identity()
+
+        user = mongo.db.users.find_one(
+            {'email': email, 'inactive': {'$exists': False}})
+
+        if not user:
+            return {'message': 'User was not found ask for support'}, 404
+
+        if 'inactive' in user:
+            return {'message': 'Account inactive ask for support'}, 400
+
+        user = mongo.db.users.delete_one({'email': email})
+
+        if user.deleted_count > 0:
+            return {'message': 'Account has been successfully deleted'}
+        else:
+            return {'message': 'Couldn\'t delete account ask for support'}, 400
+
+
 class User(Resource):
     def __init__(self):
         self.reqparse = reqparse.RequestParser(bundle_errors=True)

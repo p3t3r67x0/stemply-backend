@@ -19,6 +19,7 @@ api.add_resource(res.UserAvatar, '/user/avatar/<string:id>')
 api.add_resource(res.UserProfile, '/user/profile/<string:id>')
 api.add_resource(res.UserLastseen, '/user/lastseen/<string:id>')
 api.add_resource(res.UserChangePassword, '/user/change/<string:id>')
+api.add_resource(res.UserDeleteAccount, '/user/delete/account')
 api.add_resource(res.UserChallenge, '/user/challenge')
 api.add_resource(res.UserExport, '/user/export')
 
