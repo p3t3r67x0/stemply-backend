@@ -26,12 +26,15 @@ api.add_resource(res.UserExport, '/user/export')
 api.add_resource(res.Challenge, '/challenge', '/challenge/<string:id>')
 api.add_resource(res.ChallengeDetail, '/challenge/detail')
 api.add_resource(res.ChallengeSubscribtion, '/challenge/subscription')
+api.add_resource(res.ChallengeExport, '/challenge/export')
 
 api.add_resource(res.ChallengeTask, '/challenge/task',
                  '/challenge/task/<string:id>')
 api.add_resource(res.ChallengeTaskDetail, '/challenge/task/detail')
 api.add_resource(res.ChallengeTaskProgress, '/challenge/task/progress')
-api.add_resource(res.ChallengeExport, '/challenge/export')
+api.add_resource(res.ChallengeTaskFormList, '/challenge/task/form/list')
+api.add_resource(res.ChallengeTaskForm, '/challenge/task/form',
+                 '/challenge/task/form/<string:id>')
 
 api.add_resource(res.MailTemplate, '/template', '/template/<string:id>')
 api.add_resource(res.MailTemplateList, '/template/list')

@@ -845,6 +845,73 @@ class UserProfile(Resource):
             return {'message': 'Nothing to update already uptodate'}
 
 
+class ChallengeTaskFormList(Resource):
+    @jwt_required
+    @user_is('user')
+    def get(self):
+        forms = mongo.db.forms.find()
+
+        if not forms:
+            return {'message': 'Forms was not found ask for support'}, 404
+
+        return {'message': normalize(forms)}
+
+
+class ChallengeTaskForm(Resource):
+    def __init__(self):
+        self.reqparse = reqparse.RequestParser(bundle_errors=True)
+
+        self.reqparse.add_argument('type',
+                                   type=non_empty_string,
+                                   help='No valid type provided',
+                                   location='json',
+                                   required=True,
+                                   nullable=False)
+
+        self.reqparse.add_argument('question',
+                                   type=str,
+                                   help='No valid question provided',
+                                   location='json',
+                                   required=False,
+                                   nullable=False)
+
+        self.reqparse.add_argument('form',
+                                   type=list,
+                                   help='No valid form provided',
+                                   location='json',
+                                   required=False,
+                                   nullable=False)
+
+        super(ChallengeTaskForm, self).__init__()
+
+    @jwt_required
+    @user_is('user')
+    def get(self, id):
+        form = mongo.db.forms.find_one({'_id': ObjectId(id)})
+
+        if not form:
+            return {'message': 'Form was not found ask for support'}, 404
+
+        return {'message': normalize(form)}
+
+    @jwt_required
+    @user_is('admin')
+    def post(self):
+        args = self.reqparse.parse_args()
+
+        type = args.type
+        question = args.question
+        form = args.form
+
+        form = mongo.db.forms.insert_one(
+            {'type': type, 'form': form, 'question': question})
+
+        if form.acknowledged:
+            return {'message': 'Form was successfully created'}
+        else:
+            return {'message': 'Oooops could\'t create form'}, 400
+
+
 class UserAvatar(Resource):
     @jwt_required
     @user_is('user')
