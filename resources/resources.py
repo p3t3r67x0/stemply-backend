@@ -911,6 +911,24 @@ class ChallengeTaskForm(Resource):
         else:
             return {'message': 'Oooops could\'t create form'}, 400
 
+    @jwt_required
+    @user_is('admin')
+    def put(self, id):
+        args = self.reqparse.parse_args()
+
+        type = args.type
+        question = args.question
+        form = args.form
+
+        form = mongo.db.forms.update_one(
+            {'_id': ObjectId(id)}, {'$set': {'type': type, 'form': form,
+                                             'question': question}})
+
+        if form.acknowledged:
+            return {'message': 'Form was successfully updated'}
+        else:
+            return {'message': 'Oooops could\'t update form'}, 400
+
 
 class UserAvatar(Resource):
     @jwt_required
