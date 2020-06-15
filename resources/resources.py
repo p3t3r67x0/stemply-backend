@@ -849,7 +849,7 @@ class ChallengeTaskFormList(Resource):
     @jwt_required
     @user_is('user')
     def get(self):
-        forms = mongo.db.forms.find()
+        forms = mongo.db.forms.find({'archived': {'$exists': False}})
 
         if not forms:
             return {'message': 'Forms was not found ask for support'}, 404
@@ -887,7 +887,8 @@ class ChallengeTaskForm(Resource):
     @jwt_required
     @user_is('user')
     def get(self, id):
-        form = mongo.db.forms.find_one({'_id': ObjectId(id)})
+        form = mongo.db.forms.find_one(
+            {'_id': ObjectId(id), 'archived': {'$exists': False}})
 
         if not form:
             return {'message': 'Form was not found ask for support'}, 404
@@ -924,10 +925,21 @@ class ChallengeTaskForm(Resource):
             {'_id': ObjectId(id)}, {'$set': {'type': type, 'form': form,
                                              'question': question}})
 
-        if form.acknowledged:
+        if form.modified_count > 0:
             return {'message': 'Form was successfully updated'}
         else:
             return {'message': 'Oooops could\'t update form'}, 400
+
+    @jwt_required
+    @user_is('admin')
+    def delete(self, id):
+        form = mongo.db.forms.update_one(
+            {'_id': ObjectId(id)}, {'$set': {'archived': True}})
+
+        if form.modified_count > 0:
+            return {'message': 'Form was successfully archived'}
+        else:
+            return {'message': 'Oooops could\'t archive form'}, 400
 
 
 class UserAvatar(Resource):
