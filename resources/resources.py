@@ -1266,6 +1266,9 @@ class ChallengeTaskDetail(Resource):
         if 'archived' in task:
             return {'message': 'Task is archived ask for support'}, 400
 
+        if 'fid' not in task:
+            return {'message': normalize(task)}
+
         task['forms'] = []
 
         for fid in task['fid']:
