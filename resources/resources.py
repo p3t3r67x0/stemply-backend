@@ -466,6 +466,13 @@ class ChallengeDetail(Resource):
                                    location='json',
                                    nullable=False)
 
+        self.reqparse.add_argument('fid',
+                                   type=str,
+                                   required=False,
+                                   help='No valid form id provided',
+                                   location='json',
+                                   nullable=False)
+
         super(ChallengeDetail, self).__init__()
 
     @jwt_required
@@ -492,6 +499,7 @@ class ChallengeDetail(Resource):
         content = args.content
         from_date = args.from_date
         to_date = args.to_date
+        fid = args.fid
 
         try:
             to_date = datetime.strptime(to_date, '%d-%m-%Y')
@@ -503,7 +511,7 @@ class ChallengeDetail(Resource):
 
         try:
             statement = {'title': title, 'content': content, 'to': to_date,
-                         'from': from_date, 'duration': delta.days,
+                         'from': from_date, 'duration': delta.days, 'fid': fid,
                          'modified': datetime.utcnow()}
 
             data = mongo.db.challenge.update_one(
@@ -942,6 +950,63 @@ class ChallengeTaskForm(Resource):
             return {'message': 'Oooops could\'t archive form'}, 400
 
 
+class ChallengeTaskResponse(Resource):
+    def __init__(self):
+        self.reqparse = reqparse.RequestParser(bundle_errors=True)
+
+        self.reqparse.add_argument('fid',
+                                   type=str,
+                                   help='No valid form id provided',
+                                   location='json',
+                                   required=True,
+                                   nullable=False)
+
+        self.reqparse.add_argument('tid',
+                                   type=str,
+                                   help='No valid task id provided',
+                                   location='json',
+                                   required=True,
+                                   nullable=False)
+
+        self.reqparse.add_argument('reply',
+                                   type=non_empty_string,
+                                   help='No valid response provided',
+                                   location='json',
+                                   required=True,
+                                   nullable=False)
+
+        super(ChallengeTaskResponse, self).__init__()
+
+    @jwt_required
+    @user_is('user')
+    def post(self):
+        args = self.reqparse.parse_args()
+
+        response = mongo.db.responses.find_one(
+            {'fid': ObjectId(args.fid), 'tid': ObjectId(args.tid)})
+
+        if not response:
+            response = mongo.db.responses.insert_one({'fid': ObjectId(
+                args.fid), 'tid': ObjectId(args.tid), 'reply': args.reply})
+
+            if response.acknowledged:
+                return {'message': 'Response was successfully created'}
+            else:
+                return {'message': 'Oooops could\'t created response'}, 400
+        else:
+            query = {'_id': ObjectId(response['_id'])}
+            statement = {'reply': args.reply}
+
+            response = mongo.db.responses.update_one(
+                query, {'$set': statement}, upsert=True)
+
+            print(response.raw_result)
+            if response.modified_count > 0:
+                return {'message': 'Response was successfully updated'}
+            else:
+                return {'message': 'Oooops could\'t update response'}, 400
+
+
 class UserAvatar(Resource):
     @jwt_required
     @user_is('user')
@@ -1061,6 +1126,13 @@ class ChallengeTask(Resource):
                                    location='json',
                                    nullable=False)
 
+        self.reqparse.add_argument('fid',
+                                   type=list,
+                                   required=False,
+                                   help='No valid form id provided',
+                                   location='json',
+                                   nullable=False)
+
         super(ChallengeTask, self).__init__()
 
     @jwt_required
@@ -1095,6 +1167,7 @@ class ChallengeTask(Resource):
         content = args.content
         from_date = args.from_date
         to_date = args.to_date
+        fid = args.fid
 
         challenge = mongo.db.challenge.find_one({'_id': ObjectId(args.id)})
 
@@ -1114,7 +1187,7 @@ class ChallengeTask(Resource):
 
         try:
             mongo.db.tasks.insert_one(
-                {'cid': ObjectId(args.id), 'title': title,
+                {'cid': ObjectId(args.id), 'title': title, 'fid': fid,
                  'content': content, 'from': from_date, 'to': to_date,
                  'duration': delta.days, 'created': datetime.utcnow()})
 
@@ -1173,14 +1246,19 @@ class ChallengeTaskDetail(Resource):
                                    location='json',
                                    nullable=False)
 
+        self.reqparse.add_argument('fid',
+                                   type=list,
+                                   required=False,
+                                   help='No valid form id provided',
+                                   location='json',
+                                   nullable=False)
+
         super(ChallengeTaskDetail, self).__init__()
 
     @jwt_required
     @user_is('user')
-    def post(self):
-        args = self.reqparse.parse_args()
-
-        task = mongo.db.tasks.find_one({'_id': ObjectId(args.id)})
+    def get(self, id):
+        task = mongo.db.tasks.find_one({'_id': ObjectId(id)})
 
         if not task:
             return {'message': 'No task was found ask for support'}
@@ -1188,17 +1266,27 @@ class ChallengeTaskDetail(Resource):
         if 'archived' in task:
             return {'message': 'Task is archived ask for support'}, 400
 
+        task['forms'] = []
+
+        for fid in task['fid']:
+            form = mongo.db.forms.find_one(
+                {'_id': ObjectId(fid), 'archived': {'$exists': False}})
+
+            if form:
+                task['forms'].append(normalize(form))
+
         return {'message': normalize(task)}
 
     @jwt_required
     @user_is('admin')
-    def put(self):
+    def put(self, id):
         args = self.reqparse.parse_args()
 
         title = args.title
         content = args.content
         from_date = args.from_date
         to_date = args.to_date
+        fid = args.fid
 
         try:
             to_date = datetime.strptime(to_date, '%d-%m-%Y')
@@ -1210,11 +1298,11 @@ class ChallengeTaskDetail(Resource):
 
         try:
             statement = {'title': title, 'content': content, 'to': to_date,
-                         'from': from_date, 'duration': delta.days,
+                         'from': from_date, 'duration': delta.days, 'fid': fid,
                          'modified': datetime.utcnow()}
 
             data = mongo.db.tasks.update_one(
-                {'_id': ObjectId(args.id)}, {'$set': statement}, upsert=True)
+                {'_id': ObjectId(id)}, {'$set': statement}, upsert=True)
 
             if data.modified_count > 0:
                 return {'message': 'Task was successfully updated'}
