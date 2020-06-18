@@ -995,16 +995,34 @@ class ChallengeTaskResponse(Resource):
                 return {'message': 'Oooops could\'t created response'}, 400
         else:
             query = {'_id': ObjectId(response['_id'])}
-            statement = {'reply': args.reply}
 
-            response = mongo.db.responses.update_one(
-                query, {'$set': statement}, upsert=True)
+            if isinstance(args.reply, list):
+                for reply in args.reply:
+                    response = mongo.db.responses.update_one(
+                        query, {'$addToSet': {'reply': reply}})
+            else:
+                response = mongo.db.responses.update_one(
+                    query, {'$set': {'reply': args.reply}})
 
-            print(response.raw_result)
             if response.modified_count > 0:
                 return {'message': 'Response was successfully updated'}
             else:
                 return {'message': 'Oooops could\'t update response'}, 400
+
+    @jwt_required
+    @user_is('user')
+    def put(self):
+        args = self.reqparse.parse_args()
+
+        query = {'fid': ObjectId(args.fid), 'tid': ObjectId(args.tid)}
+
+        response = mongo.db.responses.update_one(
+            query, {'$pull': {'reply': args.reply}}, upsert=True)
+
+        if response.modified_count > 0:
+            return {'message': 'Response was successfully updated'}
+        else:
+            return {'message': 'Oooops could\'t update response'}, 400
 
 
 class UserAvatar(Resource):
@@ -1274,6 +1292,11 @@ class ChallengeTaskDetail(Resource):
         for fid in task['fid']:
             form = mongo.db.forms.find_one(
                 {'_id': ObjectId(fid), 'archived': {'$exists': False}})
+
+            response = mongo.db.responses.find_one({'fid': ObjectId(fid)})
+
+            if response:
+                form['reply'] = response['reply']
 
             if form:
                 task['forms'].append(normalize(form))
