@@ -1293,7 +1293,8 @@ class ChallengeTaskDetail(Resource):
             form = mongo.db.forms.find_one(
                 {'_id': ObjectId(fid), 'archived': {'$exists': False}})
 
-            response = mongo.db.responses.find_one({'fid': ObjectId(fid)})
+            response = mongo.db.responses.find_one(
+                {'fid': ObjectId(fid), 'tid': ObjectId(task['_id'])})
 
             if response:
                 form['reply'] = response['reply']
