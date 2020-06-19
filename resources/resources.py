@@ -617,9 +617,9 @@ class UserChallenge(Resource):
         if 'challenges' not in user:
             return {'message': 'Account not subscribed to any challenge'}, 404
 
-        for cid in user['challenges']:
-            challenges = mongo.db.challenge.find(
-                {'_id': ObjectId(cid), 'archived': {'$exists': False}})
+        challenges = mongo.db.challenge.find(
+            {'_id': {'$in': [ObjectId(id) for id in user['challenges']]},
+             'archived': {'$exists': False}})
 
         array = []
 
