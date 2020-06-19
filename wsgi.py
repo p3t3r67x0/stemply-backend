@@ -33,6 +33,7 @@ api.add_resource(res.ChallengeTask, '/challenge/task',
 api.add_resource(res.ChallengeTaskDetail, '/challenge/task/detail',
                  '/challenge/task/detail/<string:id>')
 api.add_resource(res.ChallengeTaskProgress, '/challenge/task/progress')
+api.add_resource(res.ChallengeTaskFormExport, '/challenge/task/form/export')
 api.add_resource(res.ChallengeTaskResponse, '/challenge/task/response',
                  '/challenge/task/response/<string:id>')
 api.add_resource(res.ChallengeTaskFormList, '/challenge/task/form/list')

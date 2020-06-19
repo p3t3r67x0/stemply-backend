@@ -1600,6 +1600,49 @@ class ChallengeExport(Resource):
         return Response(dest.getvalue(), mimetype='text/csv', headers=content)
 
 
+class ChallengeTaskFormExport(Resource):
+    @jwt_required
+    @user_is('admin')
+    def get(self):
+        forms = mongo.db.forms.find(
+            {}, {'_id': 1, 'form type': 1, 'form values': 1,
+                 'question': 1, 'archived': 1})
+
+        if not forms:
+            return {'message': 'No forms found ask for support'}, 400
+
+        dest = io.StringIO()
+        writer = csv.writer(dest, quoting=csv.QUOTE_ALL)
+        writer.writerow(['form id', 'type', 'question', 'form', 'archived'])
+
+        for form in normalize(forms):
+            items = ['', '', '', '', '']
+
+            for key, value in form.items():
+                if key == '_id':
+                    items[0] = value
+                if key == 'type':
+                    items[1] = value
+                if key == 'question':
+                    items[2] = value
+                if key == 'form':
+                    print(value)
+                    if isinstance(value, list):
+                        items[3] = '|'.join(
+                            [v['value'] if v['value'] else '' for v in value])
+                    else:
+                        items[3] = value
+                if key == 'archived':
+                    items[4] = value
+
+            writer.writerow(items)
+
+        content = {
+            'Content-Disposition': 'attachment; filename=export.csv'}
+
+        return Response(dest.getvalue(), mimetype='text/csv', headers=content)
+
+
 class MailTemplateList(Resource):
     @jwt_required
     @user_is('admin')
@@ -1671,9 +1714,9 @@ class UserExport(Resource):
                 if key == 'inactive':
                     items[2] = 'inactive'
                 if key == 'progress':
-                    items[4] = ','.join([c['tid'] for c in value])
+                    items[4] = '|'.join([c['tid'] for c in value])
                 if key == 'challenges':
-                    items[3] = ','.join([c for c in value])
+                    items[3] = '|'.join([c for c in value])
 
             if items[2] == '':
                 items[2] = 'active'
