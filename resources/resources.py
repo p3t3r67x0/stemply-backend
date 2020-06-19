@@ -1605,7 +1605,7 @@ class ChallengeTaskFormExport(Resource):
     @user_is('admin')
     def get(self):
         forms = mongo.db.forms.find(
-            {}, {'_id': 1, 'form type': 1, 'form values': 1,
+            {}, {'_id': 1, 'type': 1, 'form': 1,
                  'question': 1, 'archived': 1})
 
         if not forms:
