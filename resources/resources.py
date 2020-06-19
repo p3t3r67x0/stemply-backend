@@ -1626,17 +1626,54 @@ class ChallengeTaskFormExport(Resource):
                 if key == 'question':
                     items[2] = value
                 if key == 'form':
-                    print(value)
                     if isinstance(value, list):
                         items[3] = '|'.join(
-                            [v['value'] if v['value'] else '' for v in value])
+                            [v['id'] if v['id'] else '' for v in value])
                     else:
                         items[3] = value
                 if key == 'archived':
-                    items[4] = 'archived'
+                    items[4] = 'yes'
 
                 if items[4] == '':
-                    items[4] = 'active'
+                    items[4] = 'no'
+
+            writer.writerow(items)
+
+        content = {
+            'Content-Disposition': 'attachment; filename=export.csv'}
+
+        return Response(dest.getvalue(), mimetype='text/csv', headers=content)
+
+
+class ChallengeTaskResponseExport(Resource):
+    @jwt_required
+    @user_is('admin')
+    def get(self):
+        responses = mongo.db.responses.find(
+            {}, {'_id': 1, 'tid': 1, 'fid': 1, 'reply': 1})
+
+        if not responses:
+            return {'message': 'No responses found ask for support'}, 400
+
+        dest = io.StringIO()
+        writer = csv.writer(dest, quoting=csv.QUOTE_ALL)
+        writer.writerow(['response id', 'form id', 'task id', 'reply'])
+
+        for response in normalize(responses):
+            items = ['', '', '', '']
+
+            for key, value in response.items():
+                if key == '_id':
+                    items[0] = value
+                if key == 'fid':
+                    items[1] = value
+                if key == 'tid':
+                    items[2] = value
+                if key == 'reply':
+                    if isinstance(value, list):
+                        items[3] = '|'.join([v for v in value])
+                    else:
+                        items[3] = value
 
             writer.writerow(items)
 
