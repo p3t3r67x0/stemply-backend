@@ -1633,7 +1633,10 @@ class ChallengeTaskFormExport(Resource):
                     else:
                         items[3] = value
                 if key == 'archived':
-                    items[4] = value
+                    items[4] = 'archived'
+
+                if items[4] == '':
+                    items[4] = 'active'
 
             writer.writerow(items)
 
