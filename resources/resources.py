@@ -1904,6 +1904,7 @@ class RequestChallenge(Resource):
 
         return {'message': normalize({})}
 
+
     @jwt_required
     @user_is('admin')
     def put(self):
@@ -1942,6 +1943,38 @@ class RequestChallenge(Resource):
         else:
             return {'message': 'Nothing to update already uptodate'}, 400
 
+
+
+class DeleteRequestedChallenge(Resource):
+    def __init__(self):
+        self.reqparse = reqparse.RequestParser(bundle_errors=True)
+
+        self.reqparse.add_argument('id',
+                                   type=str,
+                                   required=True,
+                                   help='No valid id provided',
+                                   location='json',
+                                   nullable=False)
+
+        super(DeleteRequestedChallenge, self).__init__()
+
+    @jwt_required
+    @user_is('user')
+    def post(self):
+        args = self.reqparse.parse_args()
+        email = get_jwt_identity()
+        user = mongo.db.users.find_one({'email': email})
+
+        try:
+            ObjectId(args.id)
+        except Exception:
+            return {'message': 'The provided id is not valid'}, 400
+
+        deletedChallenge = mongo.db.subscriptions.delete_one({'_id': ObjectId(args.id), 'uid': ObjectId(user['_id'])})
+        if deletedChallenge.deleted_count == 1:
+            return {'message': 'Deleted request'}
+        else:
+            return {'message': 'Couldn\'t delete request'}
 
 class UserRequestedChallenges(Resource):
     @jwt_required
