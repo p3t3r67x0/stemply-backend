@@ -41,13 +41,12 @@ api.add_resource(res.ChallengeTaskResponse, '/challenge/task/response',
 api.add_resource(res.ChallengeTaskFormList, '/challenge/task/form/list')
 api.add_resource(res.ChallengeTaskForm, '/challenge/task/form',
                  '/challenge/task/form/<string:id>')
+api.add_resource(res.ChallengeRequestList, '/challenge/request/list')
+api.add_resource(res.ChallengeRequest, '/challenge/request',
+                 '/challenge/request/<string:id>')
 
 api.add_resource(res.MailTemplate, '/template', '/template/<string:id>')
 api.add_resource(res.MailTemplateList, '/template/list')
-
-api.add_resource(res.RequestChallenge, '/challenge/request')
-api.add_resource(res.UserRequestedChallenges, '/challenge/requests')
-api.add_resource(res.DeleteRequestedChallenge, '/challenge/request/delete')
 
 api.add_resource(res.LandingPage, '/landing')
 api.add_resource(res.Fetch, '/fetch')

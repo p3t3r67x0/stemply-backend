@@ -1831,7 +1831,7 @@ class Fetch(Resource):
         return {'added': i, 'updated': j}
 
 
-class RequestChallenge(Resource):
+class ChallengeRequest(Resource):
     def __init__(self):
         self.reqparse = reqparse.RequestParser(bundle_errors=True)
 
@@ -1842,12 +1842,12 @@ class RequestChallenge(Resource):
                                    location='json',
                                    nullable=False)
 
-        super(RequestChallenge, self).__init__()
+        super(ChallengeRequest, self).__init__()
 
     @jwt_required
     @user_is('admin')
     def get(self):
-        # TODO: add a new endpoint RequestChallengeList dont use request args
+        # TODO: add a new endpoint ChallengeRequestList dont use request args
         args = request.args
 
         if 'showall' in args:
@@ -1904,7 +1904,6 @@ class RequestChallenge(Resource):
 
         return {'message': normalize({})}
 
-
     @jwt_required
     @user_is('admin')
     def put(self):
@@ -1943,40 +1942,27 @@ class RequestChallenge(Resource):
         else:
             return {'message': 'Nothing to update already uptodate'}, 400
 
-
-
-class DeleteRequestedChallenge(Resource):
-    def __init__(self):
-        self.reqparse = reqparse.RequestParser(bundle_errors=True)
-
-        self.reqparse.add_argument('id',
-                                   type=str,
-                                   required=True,
-                                   help='No valid id provided',
-                                   location='json',
-                                   nullable=False)
-
-        super(DeleteRequestedChallenge, self).__init__()
-
     @jwt_required
     @user_is('user')
-    def post(self):
-        args = self.reqparse.parse_args()
-        email = get_jwt_identity()
-        user = mongo.db.users.find_one({'email': email})
-
+    def delete(self, id):
         try:
-            ObjectId(args.id)
+            ObjectId(id)
         except Exception:
             return {'message': 'The provided id is not valid'}, 400
 
-        deletedChallenge = mongo.db.subscriptions.delete_one({'_id': ObjectId(args.id), 'uid': ObjectId(user['_id'])})
-        if deletedChallenge.deleted_count == 1:
-            return {'message': 'Deleted request'}
+        email = get_jwt_identity()
+        user = mongo.db.users.find_one({'email': email})
+
+        subscribtion = mongo.db.subscriptions.delete_one(
+            {'_id': ObjectId(id), 'uid': ObjectId(user['_id'])})
+
+        if subscribtion.deleted_count > 0:
+            return {'message': 'Successfully deleted request'}
         else:
             return {'message': 'Couldn\'t delete request'}
 
-class UserRequestedChallenges(Resource):
+
+class ChallengeRequestList(Resource):
     @jwt_required
     @user_is('user')
     def get(self):
@@ -1996,4 +1982,17 @@ class UserRequestedChallenges(Resource):
         if not subscriptions:
             return {'message': 'No challenge subscriptions found'}, 404
 
-        return {'message': normalize(subscriptions)}
+        array = []
+
+        for subscription in subscriptions:
+            query = {'_id': ObjectId(subscription['cid'])}
+            filter = {'title': 1, 'duration': 1}
+
+            challenge = mongo.db.challenge.find_one(query, filter)
+
+            if challenge:
+                subscription['challenges'] = normalize(challenge)
+
+            array.append(subscription)
+
+        return {'message': normalize(array)}
