@@ -525,7 +525,7 @@ class ChallengeDetail(Resource):
             return {'message': 'Something went wrong'}, 500
 
 
-class ChallengeSubscribtion(Resource):
+class ChallengeSubscription(Resource):
     def __init__(self):
         self.reqparse = reqparse.RequestParser(bundle_errors=True)
 
@@ -543,7 +543,7 @@ class ChallengeSubscribtion(Resource):
                                    location='json',
                                    nullable=False)
 
-        super(ChallengeSubscribtion, self).__init__()
+        super(ChallengeSubscription, self).__init__()
 
     @jwt_required
     @user_is('user')
@@ -1832,18 +1832,6 @@ class Fetch(Resource):
 
 
 class ChallengeRequest(Resource):
-    def __init__(self):
-        self.reqparse = reqparse.RequestParser(bundle_errors=True)
-
-        self.reqparse.add_argument('id',
-                                   type=str,
-                                   required=True,
-                                   help='No valid id provided',
-                                   location='json',
-                                   nullable=False)
-
-        super(ChallengeRequest, self).__init__()
-
     @jwt_required
     @user_is('admin')
     def get(self):
@@ -1862,85 +1850,52 @@ class ChallengeRequest(Resource):
 
     @jwt_required
     @user_is('user')
-    def post(self):
-        args = self.reqparse.parse_args()
-        email = get_jwt_identity()
+    def post(self, id):
+        try:
+            ObjectId(id)
+        except Exception:
+            return {'message': 'The provided challenge id is not valid'}, 400
 
+        email = get_jwt_identity()
         user = mongo.db.users.find_one({'email': email})
 
-        try:
-            ObjectId(args.id)
-        except Exception:
-            return {'message': 'The provided id is not valid'}, 400
+        query = {'uid': ObjectId(user['_id']), 'cid': ObjectId(id)}
+        subscription = mongo.db.subscriptions.find_one(query)
 
-        if not user:
-            return {'message': 'Account not found ask for support'}, 404
+        if not subscription:
+            subscribtion = mongo.db.subscriptions.insert_one(
+                {'uid': ObjectId(user['_id']), 'cid': ObjectId(
+                    id), 'created': datetime.utcnow()})
 
-        if 'inactive' in user:
-            return {'message': 'Account inactive ask for support'}, 400
+            subscriptions = mongo.db.subscriptions.find(
+                {'uid': ObjectId(user['_id'])}, {'cid': 1})
 
-        challenge = mongo.db.challenge.find_one({'_id': ObjectId(args.id)})
+            if subscribtion.acknowledged:
+                return {
+                    'message': 'Challenge was successfully requested',
+                    'data': normalize(subscriptions)
+                }
+            else:
+                return {
+                    'message': 'Nothing to update already uptodate',
+                    'data': normalize(subscriptions)
+                }
 
-        if not challenge:
-            return {'message': 'This challenge doesn\'t exist'}, 404
+        subscribtion = mongo.db.subscriptions.delete_one(query)
 
-        if str(args.id) in user['challenges']:
+        subscriptions = mongo.db.subscriptions.find(
+            {'uid': ObjectId(user['_id'])}, {'cid': 1})
+
+        if subscribtion.acknowledged:
             return {
-                'message': 'You are already subscribed to this challenge'
-            }, 400
-
-        challengerequest = mongo.db.subscriptions.find_one(
-            {'uid': ObjectId(user['_id']), 'cid': ObjectId(args.id)})
-
-        if challengerequest:
-            return {
-                'message': 'You already requested access to this challenge'
-            }, 400
-
-        statement = {'uid': ObjectId(user['_id']), 'cid': ObjectId(
-            args.id), 'created': datetime.utcnow(), 'accepted': False}
-
-        mongo.db.subscriptions.insert_one(statement)
-
-        return {'message': normalize({})}
-
-    @jwt_required
-    @user_is('admin')
-    def put(self):
-        args = self.reqparse.parse_args()
-        email = get_jwt_identity()
-
-        args = request.args
-
-        user = mongo.db.users.find_one({'email': email})
-
-        try:
-            ObjectId(args.id)
-        except Exception:
-            return {'message': 'The provided id is not valid'}, 400
-
-        challengerequest = mongo.db.subscriptions.find_one(
-            {'_id': ObjectId(args.id)})
-
-        if not challengerequest:
-            return {'message': 'Request doesn\'t exist ask for support'}, 404
-
-        statement = {'accepted': True, 'acceptedby': user['_id'],
-                     'modified': datetime.utcnow()}
-
-        mongo.db.subscriptions.update_one(
-            {'_id': args.id}, {'$set': statement})
-
-        statement = {'$addToSet': {
-            'challenges': ObjectId(challengerequest['cid'])}}
-
-        user = mongo.db.users.update_one(
-            {'_id': ObjectId(challengerequest['uid'])}, statement, upsert=True)
-
-        if user.modified_count > 0:
-            return {'message': 'User subscribed to requested challenge'}
+                'message': 'Successfully removed challenge request',
+                'data': normalize(subscriptions)
+            }
         else:
-            return {'message': 'Nothing to update already uptodate'}, 400
+            return {
+                'message': 'Nothing to update already uptodate',
+                'data': normalize(subscriptions)
+            }
 
     @jwt_required
     @user_is('user')
@@ -1962,7 +1917,8 @@ class ChallengeRequest(Resource):
             return {'message': 'Couldn\'t delete request'}
 
 
-class ChallengeRequestList(Resource):
+# TODO: remove
+class ChallengeRequestedList(Resource):
     @jwt_required
     @user_is('user')
     def get(self):
@@ -1994,5 +1950,42 @@ class ChallengeRequestList(Resource):
                 subscription['challenges'] = normalize(challenge)
 
             array.append(subscription)
+
+        return {'message': normalize(array)}
+
+
+# TODO: remove
+class ChallengeRequestList(Resource):
+    @jwt_required
+    @user_is('user')
+    def get(self):
+        email = get_jwt_identity()
+
+        user = mongo.db.users.find_one({'email': email})
+
+        if not user:
+            return {'message': 'Account not found ask for support'}, 404
+
+        if 'inactive' in user:
+            return {'message': 'Account inactive ask for support'}, 400
+
+        challenges = mongo.db.challenge.find(
+            {'archived': {'$exists': False}}, {'title': 1, 'duration': 1})
+
+        subscriptions = mongo.db.subscriptions.find(
+            {'uid': ObjectId(user['_id'])})
+
+        array = []
+
+        if 'challenges' not in user or len(user['challenges']) == 0:
+            challenge_ids = [
+                s['cid'] if 'cid' in s else '' for s in subscriptions]
+
+            for challenge in challenges:
+                print(challenge_ids)
+                print(ObjectId(challenge['_id']), challenge_ids)
+
+                if ObjectId(challenge['_id']) not in challenge_ids:
+                    array.append(challenge)
 
         return {'message': normalize(array)}
