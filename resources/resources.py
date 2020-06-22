@@ -40,6 +40,97 @@ def cleantext(text):
     return re.sub(r'<.*?>', '', text.replace('\n', '').replace('\r', ''))
 
 
+def challenge_subscription_list():
+    challenges = mongo.db.challenge.find(
+        {'archived': {'$exists': False}}, {'title': 1})
+
+    if not challenges:
+        return {'message': 'No challenges was found ask for support'}, 404
+
+    array = []
+
+    for challenge in challenges:
+        users = mongo.db.users.find(
+            {'inactive': {'$exists': False}},
+            {'_id': 1, 'name': 1, 'email': 1, 'challenges': 1})
+
+        challenge['users'] = []
+
+        if users:
+            for user in users:
+                subscription = mongo.db.subscriptions.find_one(
+                    {'uid': ObjectId(user['_id']),
+                     'cid': ObjectId(challenge['_id'])})
+
+                if subscription:
+                    user['requested'] = True
+                else:
+                    user['requested'] = False
+
+                if 'challenges' not in user:
+                    user['subscribed'] = False
+                elif str(challenge['_id']) in user['challenges']:
+                    user['subscribed'] = True
+                else:
+                    user['subscribed'] = False
+
+                challenge['users'].append({
+                    '_id': str(user['_id']),
+                    'subscribed': user['subscribed'],
+                    'requested': user['requested'],
+                    'email': user['email'],
+                    'name': user['name']
+                })
+
+        array.append(challenge)
+
+    return normalize(array)
+
+
+def challenge_subscription(uid):
+    challenges = mongo.db.challenge.find(
+        {'archived': {'$exists': False}}, {'title': 1, 'duration': 1})
+
+    if not challenges:
+        return {'message': 'No challenges was found ask for support'}, 404
+
+    array = []
+
+    for challenge in challenges:
+        user = mongo.db.users.find_one(
+            {'inactive': {'$exists': False}, '_id': ObjectId(uid)},
+            {'_id': 1, 'name': 1, 'challenges': 1})
+
+        challenge['user'] = {}
+
+        if user:
+            subscription = mongo.db.subscriptions.find_one(
+                {'uid': ObjectId(uid), 'cid': ObjectId(challenge['_id'])})
+
+            if subscription:
+                user['requested'] = True
+            else:
+                user['requested'] = False
+
+            if 'challenges' not in user:
+                user['subscribed'] = False
+            elif str(challenge['_id']) in user['challenges']:
+                user['subscribed'] = True
+            else:
+                user['subscribed'] = False
+
+            challenge['user'] = {
+                '_id': str(user['_id']),
+                'subscribed': user['subscribed'],
+                'requested': user['requested'],
+                'duration': challenge['duration']
+            }
+
+        array.append(challenge)
+
+    return normalize(array)
+
+
 class ConfirmToken(Resource):
     def __init__(self):
         self.reqparse = reqparse.RequestParser(bundle_errors=True)
@@ -340,12 +431,12 @@ class ChallengeList(Resource):
     @jwt_required
     @user_is('user')
     def get(self):
-        challenge = mongo.db.challenge.find({'archived': {'$exists': False}})
+        challenges = mongo.db.challenge.find({'archived': {'$exists': False}})
 
-        if not challenge:
-            return {'message': 'No challenge was found ask for support'}, 400
+        if not challenges:
+            return {'message': 'No challenge was found ask for support'}, 404
 
-        return {'message': normalize(challenge)}
+        return {'message': normalize(challenges)}
 
 
 class Challenge(Resource):
@@ -476,6 +567,13 @@ class Challenge(Resource):
         return {'message': 'Challenge not found ask for support'}, 404
 
 
+class ChallengeSubscriptionList(Resource):
+    @jwt_required
+    @user_is('admin')
+    def get(self):
+        return {'message': challenge_subscription_list()}
+
+
 class ChallengeSubscription(Resource):
     def __init__(self):
         self.reqparse = reqparse.RequestParser(bundle_errors=True)
@@ -497,29 +595,6 @@ class ChallengeSubscription(Resource):
         super(ChallengeSubscription, self).__init__()
 
     @jwt_required
-    @user_is('user')
-    def get(self):
-        results = []
-        email = get_jwt_identity()
-
-        user = mongo.db.users.find_one({'email': email})
-
-        if not user:
-            return {'message': 'User was not found ask for support'}, 404
-
-        if 'inactive' in user:
-            return {'message': 'Account inactive ask for support'}, 400
-
-        challenges = [ObjectId(id) for id in user['challenges']]
-
-        # TODO: refoctor pythonic way with not
-        if 'challenges' in user:
-            results = mongo.db.challenge.find(
-                {'_id': {'$in': challenges}, 'archived': {'$exists': False}})
-
-        return {'message': normalize(results)}
-
-    @jwt_required
     @user_is('admin')
     def put(self):
         args = self.reqparse.parse_args()
@@ -528,24 +603,33 @@ class ChallengeSubscription(Resource):
         uid = args.uid
 
         query = {'_id': ObjectId(uid), 'challenges': {'$in': [cid]}}
+        user = mongo.db.users.find_one(query)
 
-        data = mongo.db.users.find_one(query)
-        statement = {'challenges': cid}
-
-        if data:
+        if user:
+            statement = {'$pull': {'challenges': cid}}
             user = mongo.db.users.update_one(
-                {'_id': ObjectId(uid)}, {'$pull': statement}, upsert=True)
+                {'_id': ObjectId(uid)}, statement, upsert=True)
 
             if user.modified_count > 0:
-                return {'message': 'User unsubscribed from challenge'}
+                return {
+                    'message': 'User unsubscribed from challenge',
+                    'data': challenge_subscription_list()
+                }
             else:
                 return {'message': 'Nothing to update already uptodate'}
 
+        statement = {'$addToSet': {'challenges': cid}}
         user = mongo.db.users.update_one(
-            {'_id': ObjectId(uid)}, {'$addToSet': statement}, upsert=True)
+            {'_id': ObjectId(uid)}, statement, upsert=True)
 
-        if user.modified_count > 0:
-            return {'message': 'User subscribed to challenge'}
+        subscribtion = mongo.db.subscriptions.delete_one(
+            {'cid': ObjectId(cid), 'uid': ObjectId(uid)})
+
+        if subscribtion.deleted_count > 0 and user.modified_count > 0:
+            return {
+                'message': 'User subscribed to challenge',
+                'data': challenge_subscription_list()
+            }
         else:
             return {'message': 'Nothing to update already uptodate'}
 
@@ -1783,22 +1867,6 @@ class Fetch(Resource):
 
 class ChallengeRequest(Resource):
     @jwt_required
-    @user_is('admin')
-    def get(self):
-        # TODO: add a new endpoint ChallengeRequestList dont use request args
-        args = request.args
-
-        if 'showall' in args:
-            if args['showall'] == 'true':
-                requests = mongo.db.subscriptions.find()
-                return {'message': normalize(requests)}
-
-        requests = mongo.db.subscriptions.find_one(
-            {'accepted': {'$eq': False}})
-
-        return {'message': normalize(requests)}
-
-    @jwt_required
     @user_is('user')
     def post(self, id):
         try:
@@ -1817,34 +1885,32 @@ class ChallengeRequest(Resource):
                 {'uid': ObjectId(user['_id']), 'cid': ObjectId(
                     id), 'created': datetime.utcnow()})
 
-            subscriptions = mongo.db.subscriptions.find(
-                {'uid': ObjectId(user['_id'])}, {'cid': 1})
-
             if subscribtion.acknowledged:
                 return {
                     'message': 'Challenge was successfully requested',
-                    'data': normalize(subscriptions)
+                    'data': challenge_subscription(user['_id'])
                 }
             else:
                 return {
                     'message': 'Nothing to update already uptodate',
-                    'data': normalize(subscriptions)
+                    'data': challenge_subscription(user['_id'])
                 }
+
+        statement = {'$pull': {'challenges': id}}
+        data = mongo.db.users.update_one(
+            {'_id': ObjectId(user['_id'])}, statement, upsert=True)
 
         subscribtion = mongo.db.subscriptions.delete_one(query)
 
-        subscriptions = mongo.db.subscriptions.find(
-            {'uid': ObjectId(user['_id'])}, {'cid': 1})
-
-        if subscribtion.acknowledged:
+        if data.modified_count > 0 and subscribtion.deleted_count > 0:
             return {
                 'message': 'Successfully removed challenge request',
-                'data': normalize(subscriptions)
+                'data': challenge_subscription(user['_id'])
             }
         else:
             return {
                 'message': 'Nothing to update already uptodate',
-                'data': normalize(subscriptions)
+                'data': challenge_subscription(user['_id'])
             }
 
     @jwt_required
@@ -1867,44 +1933,6 @@ class ChallengeRequest(Resource):
             return {'message': 'Couldn\'t delete request'}
 
 
-# TODO: remove
-class ChallengeRequestedList(Resource):
-    @jwt_required
-    @user_is('user')
-    def get(self):
-        email = get_jwt_identity()
-
-        user = mongo.db.users.find_one({'email': email})
-
-        if not user:
-            return {'message': 'Account not found ask for support'}, 404
-
-        if 'inactive' in user:
-            return {'message': 'Account inactive ask for support'}, 400
-
-        subscriptions = mongo.db.subscriptions.find(
-            {'uid': ObjectId(user['_id'])})
-
-        if not subscriptions:
-            return {'message': 'No challenge subscriptions found'}, 404
-
-        array = []
-
-        for subscription in subscriptions:
-            query = {'_id': ObjectId(subscription['cid'])}
-            filter = {'title': 1, 'duration': 1}
-
-            challenge = mongo.db.challenge.find_one(query, filter)
-
-            if challenge:
-                subscription['challenges'] = normalize(challenge)
-
-            array.append(subscription)
-
-        return {'message': normalize(array)}
-
-
-# TODO: remove
 class ChallengeRequestList(Resource):
     @jwt_required
     @user_is('user')
@@ -1919,23 +1947,4 @@ class ChallengeRequestList(Resource):
         if 'inactive' in user:
             return {'message': 'Account inactive ask for support'}, 400
 
-        challenges = mongo.db.challenge.find(
-            {'archived': {'$exists': False}}, {'title': 1, 'duration': 1})
-
-        subscriptions = mongo.db.subscriptions.find(
-            {'uid': ObjectId(user['_id'])})
-
-        array = []
-
-        if 'challenges' not in user or len(user['challenges']) == 0:
-            challenge_ids = [
-                s['cid'] if 'cid' in s else '' for s in subscriptions]
-
-            for challenge in challenges:
-                print(challenge_ids)
-                print(ObjectId(challenge['_id']), challenge_ids)
-
-                if ObjectId(challenge['_id']) not in challenge_ids:
-                    array.append(challenge)
-
-        return {'message': normalize(array)}
+        return {'message': challenge_subscription(user['_id'])}
