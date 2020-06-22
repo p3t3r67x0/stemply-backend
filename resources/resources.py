@@ -336,14 +336,26 @@ class TokenRefresh(Resource):
         return {'access_token': access_token}
 
 
+class ChallengeList(Resource):
+    @jwt_required
+    @user_is('user')
+    def get(self):
+        challenge = mongo.db.challenge.find({'archived': {'$exists': False}})
+
+        if not challenge:
+            return {'message': 'No challenge was found ask for support'}, 400
+
+        return {'message': normalize(challenge)}
+
+
 class Challenge(Resource):
     def __init__(self):
         self.reqparse = reqparse.RequestParser(bundle_errors=True)
 
-        self.reqparse.add_argument('id',
+        self.reqparse.add_argument('fid',
                                    type=str,
                                    required=False,
-                                   help='No valid id provided',
+                                   help='No valid form ids provided',
                                    location='json',
                                    nullable=False)
 
@@ -379,11 +391,14 @@ class Challenge(Resource):
 
     @jwt_required
     @user_is('user')
-    def get(self):
-        challenge = mongo.db.challenge.find({'archived': {'$exists': False}})
+    def get(self, id):
+        challenge = mongo.db.challenge.find_one({'_id': ObjectId(id)})
 
         if not challenge:
-            return {'message': 'No challenge was found ask for support'}
+            return {'message': 'Challenge was not found ask for support'}, 404
+
+        if 'archived' in challenge:
+            return {'message': 'Challenge is archived ask for support'}, 400
 
         return {'message': normalize(challenge)}
 
@@ -417,82 +432,7 @@ class Challenge(Resource):
 
     @jwt_required
     @user_is('admin')
-    def delete(self, id):
-        challenge = mongo.db.challenge.update_one(
-            {'_id': ObjectId(id)}, {'$set': {'archived': True}})
-
-        if challenge.matched_count > 0:
-            return {'message': 'Challenge status was set to archived'}
-
-        return {'message': 'Challenge not found ask for support'}, 404
-
-
-class ChallengeDetail(Resource):
-    def __init__(self):
-        self.reqparse = reqparse.RequestParser(bundle_errors=True)
-
-        self.reqparse.add_argument('id',
-                                   type=str,
-                                   required=False,
-                                   help='No valid id provided',
-                                   location='json',
-                                   nullable=False)
-
-        self.reqparse.add_argument('title',
-                                   type=str,
-                                   required=False,
-                                   help='No valid title provided',
-                                   location='json',
-                                   nullable=False)
-
-        self.reqparse.add_argument('content',
-                                   type=str,
-                                   required=False,
-                                   help='No valid content provided',
-                                   location='json',
-                                   nullable=False)
-
-        self.reqparse.add_argument('from_date',
-                                   type=str,
-                                   required=False,
-                                   help='No valid from date provided',
-                                   location='json',
-                                   nullable=False)
-
-        self.reqparse.add_argument('to_date',
-                                   type=str,
-                                   required=False,
-                                   help='No valid to date provided',
-                                   location='json',
-                                   nullable=False)
-
-        self.reqparse.add_argument('fid',
-                                   type=str,
-                                   required=False,
-                                   help='No valid form id provided',
-                                   location='json',
-                                   nullable=False)
-
-        super(ChallengeDetail, self).__init__()
-
-    @jwt_required
-    @user_is('user')
-    def post(self):
-        args = self.reqparse.parse_args()
-
-        challenge = mongo.db.challenge.find_one({'_id': ObjectId(args.id)})
-
-        if not challenge:
-            return {'message': 'No challenge was found ask for support'}
-
-        if 'archived' in challenge:
-            return {'message': 'Challenge is archived ask for support'}, 400
-
-        return {'message': normalize(challenge)}
-
-    @jwt_required
-    @user_is('admin')
-    def put(self):
+    def put(self, id):
         args = self.reqparse.parse_args()
 
         title = args.title
@@ -515,7 +455,7 @@ class ChallengeDetail(Resource):
                          'modified': datetime.utcnow()}
 
             data = mongo.db.challenge.update_one(
-                {'_id': ObjectId(args.id)}, {'$set': statement}, upsert=True)
+                {'_id': ObjectId(id)}, {'$set': statement}, upsert=True)
 
             if data.modified_count > 0:
                 return {'message': 'Challenge was successfully updated'}
@@ -524,19 +464,30 @@ class ChallengeDetail(Resource):
         except Exception:
             return {'message': 'Something went wrong'}, 500
 
+    @jwt_required
+    @user_is('admin')
+    def delete(self, id):
+        challenge = mongo.db.challenge.update_one(
+            {'_id': ObjectId(id)}, {'$set': {'archived': True}})
+
+        if challenge.matched_count > 0:
+            return {'message': 'Challenge status was set to archived'}
+
+        return {'message': 'Challenge not found ask for support'}, 404
+
 
 class ChallengeSubscription(Resource):
     def __init__(self):
         self.reqparse = reqparse.RequestParser(bundle_errors=True)
 
-        self.reqparse.add_argument('challenge_id',
+        self.reqparse.add_argument('cid',
                                    type=str,
                                    required=False,
                                    help='No valid challenge id provided',
                                    location='json',
                                    nullable=False)
 
-        self.reqparse.add_argument('user_id',
+        self.reqparse.add_argument('uid',
                                    type=str,
                                    required=False,
                                    help='No valid user id provided',
@@ -573,18 +524,17 @@ class ChallengeSubscription(Resource):
     def put(self):
         args = self.reqparse.parse_args()
 
-        challenge_id = args.challenge_id
-        user_id = args.user_id
+        cid = args.cid
+        uid = args.uid
 
-        query = {'_id': ObjectId(user_id), 'challenges': {
-            '$in': [challenge_id]}}
+        query = {'_id': ObjectId(uid), 'challenges': {'$in': [cid]}}
 
         data = mongo.db.users.find_one(query)
-        statement = {'challenges': challenge_id}
+        statement = {'challenges': cid}
 
         if data:
             user = mongo.db.users.update_one(
-                {'_id': ObjectId(user_id)}, {'$pull': statement}, upsert=True)
+                {'_id': ObjectId(uid)}, {'$pull': statement}, upsert=True)
 
             if user.modified_count > 0:
                 return {'message': 'User unsubscribed from challenge'}
@@ -592,7 +542,7 @@ class ChallengeSubscription(Resource):
                 return {'message': 'Nothing to update already uptodate'}
 
         user = mongo.db.users.update_one(
-            {'_id': ObjectId(user_id)}, {'$addToSet': statement}, upsert=True)
+            {'_id': ObjectId(uid)}, {'$addToSet': statement}, upsert=True)
 
         if user.modified_count > 0:
             return {'message': 'User subscribed to challenge'}

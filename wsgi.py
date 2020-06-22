@@ -24,10 +24,9 @@ api.add_resource(res.UserChallenge, '/user/challenge')
 api.add_resource(res.UserExport, '/user/export')
 
 api.add_resource(res.Challenge, '/challenge', '/challenge/<string:id>')
-api.add_resource(res.ChallengeDetail, '/challenge/detail')
+api.add_resource(res.ChallengeList, '/challenge/list')
 api.add_resource(res.ChallengeSubscription, '/challenge/subscription')
 api.add_resource(res.ChallengeExport, '/challenge/export')
-
 api.add_resource(res.ChallengeTask, '/challenge/task',
                  '/challenge/task/<string:id>')
 api.add_resource(res.ChallengeTaskDetail, '/challenge/task/detail',
