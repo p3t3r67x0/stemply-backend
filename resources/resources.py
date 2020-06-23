@@ -1948,3 +1948,101 @@ class ChallengeRequestList(Resource):
             return {'message': 'Account inactive ask for support'}, 400
 
         return {'message': challenge_subscription(user['_id'])}
+
+
+class WikiEntry(Resource):
+    def __init__(self):
+        self.reqparse = reqparse.RequestParser(bundle_errors=True)
+
+        self.reqparse.add_argument('title',
+                                   type=str,
+                                   required=False,
+                                   help='No valid title provided',
+                                   location='json',
+                                   nullable=False)
+
+        self.reqparse.add_argument('content',
+                                   type=str,
+                                   required=False,
+                                   help='No valid content provided',
+                                   location='json',
+                                   nullable=False)
+
+        self.reqparse.add_argument('tags',
+                                   type=list,
+                                   required=False,
+                                   help='No valid tags provided',
+                                   location='json',
+                                   nullable=False)
+
+        super(WikiEntry, self).__init__()
+
+    @jwt_required
+    @user_is('user')
+    def get(self, id):
+        entries = mongo.db.entries.find_one({'_id': ObjectId(id)})
+
+        if not entries:
+            return {'message': 'Wiki entry was not found ask for support'}, 404
+
+        if 'archived' in entries:
+            return {'message': 'Wiki entry is archived ask for support'}, 400
+
+        return {'message': normalize(entries)}
+
+    @jwt_required
+    @user_is('admin')
+    def post(self):
+        args = self.reqparse.parse_args()
+
+        title = args.title
+        content = args.content
+        tags = args.tags
+
+        entries = mongo.db.entries.insert_one(
+            {'title': title, 'content': content, 'created': datetime.utcnow()})
+
+        if isinstance(tags, list):
+            statement = {'$set': {'tags': tags}}
+
+            mongo.db.entries.update_one(
+                {'_id': entries.inserted_id()}, statement, upsert=True)
+
+        return {'message': 'Wiki entry was successfully added'}
+
+    @jwt_required
+    @user_is('admin')
+    def put(self, id):
+        args = self.reqparse.parse_args()
+
+        title = args.title
+        content = args.content
+        tags = args.tags
+
+        statement = {'title': title, 'content': content,
+                     'modified': datetime.utcnow()}
+
+        entries = mongo.db.entries.update_one(
+            {'_id': ObjectId(id)}, {'$set': statement}, upsert=True)
+
+        if isinstance(tags, list):
+            statement = {'$set': {'tags': tags}}
+
+            mongo.db.entries.update_one(
+                {'_id': entries.inserted_id()}, statement, upsert=True)
+
+        if entries.modified_count > 0:
+            return {'message': 'Wiki entry was successfully updated'}
+        else:
+            return {'message': 'Nothing to update already uptodate'}
+
+    @jwt_required
+    @user_is('admin')
+    def delete(self, id):
+        entries = mongo.db.entries.update_one(
+            {'_id': ObjectId(id)}, {'$set': {'archived': True}})
+
+        if entries.matched_count > 0:
+            return {'message': 'Wiki entry was successfully archived'}
+
+        return {'message': 'Entry not found ask for support'}, 404
