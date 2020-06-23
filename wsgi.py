@@ -48,7 +48,8 @@ api.add_resource(res.ChallengeRequest, '/challenge/request',
 api.add_resource(res.MailTemplate, '/template', '/template/<string:id>')
 api.add_resource(res.MailTemplateList, '/template/list')
 
-api.add_resource(res.WikiEntry, '/wiki', '/wiki/<string:id>')
+api.add_resource(res.WikiEntry, '/wiki/entry', '/wiki/entry/<string:id>')
+api.add_resource(res.WikiEntryList, '/wiki/entry/list')
 
 api.add_resource(res.LandingPage, '/landing')
 api.add_resource(res.Fetch, '/fetch')

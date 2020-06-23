@@ -1950,6 +1950,18 @@ class ChallengeRequestList(Resource):
         return {'message': challenge_subscription(user['_id'])}
 
 
+class WikiEntryList(Resource):
+    @jwt_required
+    @user_is('user')
+    def get(self):
+        entries = mongo.db.entries.find({'archived': {'$exists': False}})
+
+        if not entries:
+            return {'message': 'No wiki entries found ask for support'}, 404
+
+        return {'message': normalize(entries)}
+
+
 class WikiEntry(Resource):
     def __init__(self):
         self.reqparse = reqparse.RequestParser(bundle_errors=True)
@@ -1980,15 +1992,16 @@ class WikiEntry(Resource):
     @jwt_required
     @user_is('user')
     def get(self, id):
-        entries = mongo.db.entries.find_one({'_id': ObjectId(id)})
+        entry = mongo.db.entries.find_one(
+            {'_id': ObjectId(id), 'archived': {'$exists': False}})
 
-        if not entries:
+        if not entry:
             return {'message': 'Wiki entry was not found ask for support'}, 404
 
-        if 'archived' in entries:
+        if 'archived' in entry:
             return {'message': 'Wiki entry is archived ask for support'}, 400
 
-        return {'message': normalize(entries)}
+        return {'message': normalize(entry)}
 
     @jwt_required
     @user_is('admin')
@@ -2006,7 +2019,7 @@ class WikiEntry(Resource):
             statement = {'$set': {'tags': tags}}
 
             mongo.db.entries.update_one(
-                {'_id': entries.inserted_id()}, statement, upsert=True)
+                {'_id': entries.inserted_id}, statement, upsert=True)
 
         return {'message': 'Wiki entry was successfully added'}
 
@@ -2029,7 +2042,7 @@ class WikiEntry(Resource):
             statement = {'$set': {'tags': tags}}
 
             mongo.db.entries.update_one(
-                {'_id': entries.inserted_id()}, statement, upsert=True)
+                {'_id': ObjectId(id)}, statement, upsert=True)
 
         if entries.modified_count > 0:
             return {'message': 'Wiki entry was successfully updated'}
