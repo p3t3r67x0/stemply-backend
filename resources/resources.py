@@ -1982,6 +1982,34 @@ class WikiEntrySearch(Resource):
         return {'message': normalize(entries)}
 
 
+class WikiEntryTag(Resource):
+    def __init__(self):
+        self.reqparse = reqparse.RequestParser(bundle_errors=True)
+
+        self.reqparse.add_argument('tag',
+                                   type=str,
+                                   required=False,
+                                   help='No valid tag provided',
+                                   location='json',
+                                   nullable=False)
+
+        super(WikiEntryTag, self).__init__()
+
+    @jwt_required
+    @user_is('user')
+    def post(self):
+        args = self.reqparse.parse_args()
+
+        query = {'tags': {'$in': [args.tag]}, 'archived': {'$exists': False}}
+
+        entries = mongo.db.entries.find(query).limit(20)
+
+        if not entries:
+            return {'message': 'No wiki entries try an other search'}, 404
+
+        return {'message': normalize(entries)}
+
+
 class WikiEntryList(Resource):
     @jwt_required
     @user_is('user')

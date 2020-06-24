@@ -49,6 +49,7 @@ api.add_resource(res.MailTemplate, '/template', '/template/<string:id>')
 api.add_resource(res.MailTemplateList, '/template/list')
 
 api.add_resource(res.WikiEntry, '/wiki/entry', '/wiki/entry/<string:id>')
+api.add_resource(res.WikiEntryTag, '/wiki/entry/tag')
 api.add_resource(res.WikiEntrySearch, '/wiki/entry/search')
 api.add_resource(res.WikiEntryList, '/wiki/entry/list')
 
