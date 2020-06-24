@@ -1950,6 +1950,38 @@ class ChallengeRequestList(Resource):
         return {'message': challenge_subscription(user['_id'])}
 
 
+class WikiEntrySearch(Resource):
+    def __init__(self):
+        self.reqparse = reqparse.RequestParser(bundle_errors=True)
+
+        self.reqparse.add_argument('query',
+                                   type=str,
+                                   required=False,
+                                   help='No valid query provided',
+                                   location='json',
+                                   nullable=False)
+
+        super(WikiEntrySearch, self).__init__()
+
+    @jwt_required
+    @user_is('user')
+    def post(self):
+        args = self.reqparse.parse_args()
+
+        query = {'$text': {'$search': args.query},
+                 'archived': {'$exists': False}}
+
+        filter = {'score': {'$meta': 'textScore'}}
+
+        entries = mongo.db.entries.find(query, filter).sort([(
+            'score', {'$meta': 'textScore'})]).limit(20)
+
+        if not entries:
+            return {'message': 'No wiki entries try an other search'}, 404
+
+        return {'message': normalize(entries)}
+
+
 class WikiEntryList(Resource):
     @jwt_required
     @user_is('user')
