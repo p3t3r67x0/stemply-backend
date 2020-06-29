@@ -483,6 +483,9 @@ class Challenge(Resource):
     @jwt_required
     @user_is('user')
     def get(self, id):
+        email = get_jwt_identity()
+
+        user = mongo.db.users.find_one({'email': email})
         challenge = mongo.db.challenge.find_one({'_id': ObjectId(id)})
 
         if not challenge:
@@ -490,6 +493,21 @@ class Challenge(Resource):
 
         if 'archived' in challenge:
             return {'message': 'Challenge is archived ask for support'}, 400
+
+        query = {'cid': ObjectId(challenge['_id']),
+                 'archived': {'$exists': False}}
+        tasks = mongo.db.tasks.find(query)
+
+        if tasks:
+            challenge['tasks'] = []
+
+            for task in normalize(tasks):
+                if 'progress' in user:
+                    for progress in user['progress']:
+                        if task['_id'] == progress['tid']:
+                            task['progress'] = 'done'
+
+                challenge['tasks'].append(task)
 
         return {'message': normalize(challenge)}
 
